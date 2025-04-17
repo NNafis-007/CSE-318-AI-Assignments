@@ -1,0 +1,2 @@
+- K x K grid and n = k^2 - 1 square in the grid so one will be blank
+- 
