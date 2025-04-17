@@ -26,6 +26,7 @@ else:
     pqueue.push(0, initial_state)
 
     # open_list : list[N_Puzzle] = []
+    explored = 1
     closed_list : list[N_Puzzle] = []
 
     while pqueue.size() != 0:
@@ -43,6 +44,7 @@ else:
             nei_puzzle.parent = curr_state
             if nei_puzzle not in closed_list:
                 pqueue.push(nei_puzzle.priority, nei_puzzle)
+                explored += 1
 
 
     print(f"SOLVED PUZZLE in {curr_state.moves_count} moves")
@@ -55,5 +57,5 @@ else:
     states_path.append(curr_state)
     states_path = states_path[::-1]
 
-    print("open list : ", pqueue.size())
+    print("open list : ", explored)
     print("closed list : ", len(closed_list))
