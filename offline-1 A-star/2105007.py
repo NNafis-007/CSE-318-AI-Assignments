@@ -2,7 +2,7 @@ from N_Puzzle import N_Puzzle
 from heuristics import hamming_distance, manhattan_distance, euclidean_distance, linear_conflict
 from PQueue import PriorityQueue
 
-h_n = hamming_distance
+h_n = euclidean_distance
 
 #Take input
 k = int(input("enter matrix size then the elements\n"))
@@ -24,9 +24,6 @@ if not(initial_state.is_solvable()):
 else:
     pqueue = PriorityQueue()
     pqueue.push(0, initial_state)
-
-    heuristics = [hamming_distance, manhattan_distance, euclidean_distance, linear_conflict]
-    h_n = heuristics[1]
 
     # open_list : list[N_Puzzle] = []
     #closed_list : list[N_Puzzle] = []
