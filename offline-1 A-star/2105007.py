@@ -2,6 +2,7 @@ from N_Puzzle import N_Puzzle
 from heuristics import hamming_distance, manhattan_distance, euclidean_distance, linear_conflict
 from PQueue import PriorityQueue
 
+#define the heuristic
 h_n = euclidean_distance
 
 #Take input
@@ -53,7 +54,7 @@ else:
                 explored += 1
 
 
-    print(f"SOLVED PUZZLE in {curr_state.moves_count} moves")
+    print(f"Minimum number of moves =  {curr_state.moves_count}")
 
     #Construct path from nodes
     states_path = []
@@ -66,5 +67,5 @@ else:
     for state in states_path:
         print(state)
 
-    print("open list : ", explored)
-    print("closed list : ", expanded)
+    print("Explored : ", explored)
+    print("Expanded : ", expanded)
