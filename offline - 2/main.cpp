@@ -6,96 +6,126 @@
 #include <ctime>
 #include <limits>
 #include <chrono>
+#include <fstream> // For file operations
+#include <dirent.h> // For directory iteration
 #include "heuristics.hpp"
 
 using namespace std;
 
+string getFileNameWithoutExtension(const string& path) {
+    // Find last '/' (or '\\' for Windows)
+    size_t lastSlash = path.find_last_of("/\\");
+    // Extract the file name with extension
+    string filename = path.substr(lastSlash + 1);
+    
+    // Find the last '.' to remove extension
+    size_t lastDot = filename.find_last_of('.');
+    if (lastDot == string::npos)
+        return filename; // No extension found
+    return filename.substr(0, lastDot);
+}
+
 int main()
 {
-    // 1) Open the file
-    string input_file = "graph_GRASP/set1/g1.rud";
-    ifstream in(input_file);
-    if (!in)
+    string input_folder = "graph_GRASP/set1/";
+    ofstream csv_out("results.csv", ios::app); // Append mode
+    if (!csv_out)
     {
-        cerr << "Error: could not open file '" << input_file << "'\n";
+        cerr << "Error: could not open results.csv for writing\n";
         return 1;
     }
 
-    // 2) Read n, m
-
-    int n, m;
-    in >> n >> m;
-    if (!in)
+    // Write CSV header if the file is empty
+    if (csv_out.tellp() == 0)
     {
-        cerr << "Error: invalid header in input file\n";
+        csv_out << "File Name,Vertices,Edges,Randomized,Greedy,Semi-Greedy,Local Search,GRASP Iterations,GRASP Result\n";
+    }
+
+    DIR *dir;
+    struct dirent *entry;
+
+    if ((dir = opendir(input_folder.c_str())) == nullptr)
+    {
+        cerr << "Error: could not open directory '" << input_folder << "'\n";
         return 1;
     }
 
-    // 3) Build the graph
-    Graph *G = new Graph(n);
-    for (int i = 0; i < m; ++i)
+    while ((entry = readdir(dir)) != nullptr)
     {
-        int u, v, w;
-        in >> u >> v >> w;
+        string file_name = entry->d_name;
+        if (file_name == "." || file_name == "..")
+            continue;
+
+        string input_file = input_folder + file_name;
+        ifstream in(input_file);
         if (!in)
         {
-            cerr << "Error: malformed edge at line " << (i + 2) << "\n";
-            return 1;
+            cerr << "Error: could not open file '" << input_file << "'\n";
+            continue;
         }
-        G->addEdge(u, v, w);
+
+        // Read n, m
+        int n, m;
+        in >> n >> m;
+        if (!in)
+        {
+            cerr << "Error: invalid header in input file '" << input_file << "'\n";
+            continue;
+        }
+
+        // Build the graph
+        auto start = chrono::high_resolution_clock::now();
+        Graph *G = new Graph(n);
+        for (int i = 0; i < m; ++i)
+        {
+            int u, v, w;
+            in >> u >> v >> w;
+            if (!in)
+            {
+                cerr << "Error: malformed edge in file '" << input_file << "'\n";
+                delete G;
+                continue;
+            }
+            G->addEdge(u, v, w);
+        }
+        in.close();
+
+        // Parameters
+        const int RAND_TRIALS = 100; // for randomized heuristic
+        const double ALPHA = 0.5;    // for semi-greedy
+        const int GRASP_ITERS = 10;  // GRASP iterations
+
+        // Randomized construction
+        double avgRand = Randomized_max_cut(G, RAND_TRIALS);
+
+        // Greedy construction
+        auto XY = Greedy_max_cut(G);
+        double wGreedy = G->calc_cut_weight(XY.first, XY.second);
+
+        // Semi-greedy construction
+        auto XY_sg = SemiGreedy_max_cut(G, ALPHA);
+        double wSemi = G->calc_cut_weight(XY_sg.first, XY_sg.second);
+
+        // Random + Local Search
+        auto XY_random = get_Randomized_max_cuts(G);
+        double wR0 = G->calc_cut_weight(XY_random.first, XY_random.second);
+        auto XY_improved = LocalSearch(G, move(XY_random.first), move(XY_random.second));
+        double wR1 = G->calc_cut_weight(XY_improved.first, XY_improved.second);
+
+        // Full GRASP
+        auto XY_grasp = GRASP_max_cut(G, GRASP_ITERS, ALPHA);
+        double wGrasp = G->calc_cut_weight(XY_grasp.first, XY_grasp.second);
+
+        // Write results to CSV
+        string filename = getFileNameWithoutExtension(input_file);
+        csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << wR1 << "," << GRASP_ITERS << "," << wGrasp << "\n";
+        auto end = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
+        cout << "Processed file: " << filename << " | Time taken: " << (duration.count() / (float)1000) << " ms\n"; 
+        delete G;
     }
-    in.close();
 
-    // seed RNG
-    srand((unsigned)time(nullptr));
-
-    // parameters
-    auto start_random = chrono::high_resolution_clock::now();
-
-    const int RAND_TRIALS = 100; // for randomized heuristic
-    const double ALPHA = 0.5;    // for semi-greedy
-    const int GRASP_ITERS = 50;  // GRASP iterations
-
-    // 2) Randomized construction: average cut over RAND_TRIALS
-    double avgRand = Randomized_max_cut(G, RAND_TRIALS);
-    auto stop_random = chrono::high_resolution_clock::now();
-    cout << "Randomized (avg over " << RAND_TRIALS << "): "
-         << avgRand << " | time = " << (stop_random - start_random).count() / 1e9 << "s\n";
-
-    // // 3) Greedy construction
-    auto start_greedy = chrono::high_resolution_clock::now();
-    auto XY = Greedy_max_cut(G);
-    double wGreedy = G->calc_cut_weight(XY.first, XY.second);
-    auto stop_greedy = chrono::high_resolution_clock::now();
-    cout << "Greedy: " << wGreedy << " | time = " << (stop_greedy - start_greedy).count() / 1e9 << "s\n";
-
-    // 4) Semi-greedy construction
-    auto start_semi_greedy = chrono::high_resolution_clock::now();
-    auto XY_sg = SemiGreedy_max_cut(G, ALPHA);
-    double wSemi = G->calc_cut_weight(XY_sg.first, XY_sg.second);
-    auto stop_semi_greedy = chrono::high_resolution_clock::now();
-    cout << "Semi-greedy (alpha=" << ALPHA << "): " << wSemi << " | time = " << (stop_semi_greedy - start_semi_greedy).count() / 1e9 << "s\n";
-
-    // 5) Random + Local Search
-    auto start_random_ls = chrono::high_resolution_clock::now();
-    auto XY_random = get_Randomized_max_cuts(G);
-    double wR0 = G->calc_cut_weight(XY_random.first, XY_random.second);
-
-    auto XY_improved = LocalSearch(G, move(XY_random.first), move(XY_random.second));
-    double wR1 = G->calc_cut_weight(XY_improved.first, XY_improved.second);
-    auto stop_random_ls = chrono::high_resolution_clock::now();
-    cout << "Random with LS: before=" << wR0 << "  after=" << wR1;
-    cout << " | time = " << (stop_random_ls - start_random_ls).count() / 1e9 << "s\n";
-
-    // 6) Full GRASP
-    auto start_grasp = chrono::high_resolution_clock::now();
-    auto XY_grasp = GRASP_max_cut(G, GRASP_ITERS, ALPHA);
-    double wGrasp = G->calc_cut_weight(XY_grasp.first, XY_grasp.second);
-    auto stop_grasp = chrono::high_resolution_clock::now();
-    cout << "GRASP (iters=" << GRASP_ITERS
-         << ", alpha =" << ALPHA << "): " << wGrasp;
-    cout << " | time = " << (stop_grasp - start_grasp).count() / 1e9 << "s\n";
-
-    delete G;
+    closedir(dir);
+    csv_out.close();
     return 0;
 }
