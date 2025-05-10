@@ -54,7 +54,7 @@ else:
                 explored += 1
 
 
-    print(f"Minimum number of moves =  {curr_state.moves_count}")
+    print(f"\nMinimum number of moves =  {curr_state.moves_count}\n")
 
     #Construct path from nodes
     states_path = []
