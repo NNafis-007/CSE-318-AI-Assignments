@@ -6,27 +6,38 @@
 #include <ctime>
 #include <limits>
 #include <chrono>
-#include <fstream> // For file operations
+#include <fstream>  // For file operations
 #include <dirent.h> // For directory iteration
 #include "heuristics.hpp"
 
 using namespace std;
 
-string getFileNameWithoutExtension(const string& path) {
+string getFileNameWithoutExtension(const string &path)
+{
     // Find last '/' (or '\\' for Windows)
     size_t lastSlash = path.find_last_of("/\\");
     // Extract the file name with extension
     string filename = path.substr(lastSlash + 1);
-    
+
     // Find the last '.' to remove extension
     size_t lastDot = filename.find_last_of('.');
     if (lastDot == string::npos)
         return filename; // No extension found
-    return filename.substr(0, lastDot);
+
+    string str = filename.substr(0, lastDot);
+    for (char &c : str)
+    {
+        c = toupper(static_cast<unsigned char>(c));
+    }
+
+    return str;
 }
 
 int main()
 {
+    // Set a fixed seed value for reproducibility
+    const unsigned int FIXED_SEED = 2105007;
+
     string input_folder = "graph_GRASP/set1/";
     ofstream csv_out("results.csv", ios::app); // Append mode
     if (!csv_out)
@@ -38,7 +49,7 @@ int main()
     // Write CSV header if the file is empty
     if (csv_out.tellp() == 0)
     {
-        csv_out << "File Name,Vertices,Edges,Randomized,Greedy,Semi-Greedy,Local Search,GRASP Iterations,GRASP Result\n";
+        csv_out << "Name,|V|,|E|,Randomized-1,Greedy-1,Semi-Greedy-1,Simple local Iteration,LS Avg Value,GRASP Iterations,GRASP Result\n";
     }
 
     DIR *dir;
@@ -92,36 +103,39 @@ int main()
 
         // Parameters
         const int RAND_TRIALS = 100; // for randomized heuristic
-        const double ALPHA = 0.5;    // for semi-greedy
-        const int GRASP_ITERS = 10;  // GRASP iterations
+        const double ALPHA = 0.4;    // for semi-greedy
+        const int GRASP_ITERS = 25;  // GRASP iterations
 
         // Randomized construction
-        double avgRand = Randomized_max_cut(G, RAND_TRIALS);
+        double avgRand = Randomized_max_cut(G, RAND_TRIALS, FIXED_SEED);
 
         // Greedy construction
         auto XY = Greedy_max_cut(G);
         double wGreedy = G->calc_cut_weight(XY.first, XY.second);
 
         // Semi-greedy construction
-        auto XY_sg = SemiGreedy_max_cut(G, ALPHA);
+        auto XY_sg = SemiGreedy_max_cut(G, ALPHA, FIXED_SEED);
         double wSemi = G->calc_cut_weight(XY_sg.first, XY_sg.second);
 
         // Random + Local Search
-        auto XY_random = get_Randomized_max_cuts(G);
+        auto XY_random = get_Randomized_max_cuts(G, FIXED_SEED);
         double wR0 = G->calc_cut_weight(XY_random.first, XY_random.second);
-        auto XY_improved = LocalSearch(G, move(XY_random.first), move(XY_random.second));
+        int num_iters_LS = 0;
+        auto XY_improved = LocalSearch(G, move(XY_random.first), move(XY_random.second), num_iters_LS);
         double wR1 = G->calc_cut_weight(XY_improved.first, XY_improved.second);
 
         // Full GRASP
-        auto XY_grasp = GRASP_max_cut(G, GRASP_ITERS, ALPHA);
+        auto XY_grasp = GRASP_max_cut(G, GRASP_ITERS, ALPHA, FIXED_SEED);
         double wGrasp = G->calc_cut_weight(XY_grasp.first, XY_grasp.second);
 
         // Write results to CSV
         string filename = getFileNameWithoutExtension(input_file);
-        csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << wR1 << "," << GRASP_ITERS << "," << wGrasp << "\n";
+        csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << num_iters_LS << "," << wR1 << "," << GRASP_ITERS << "," << wGrasp << "\n";
+
+        // csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << wR1 << "," << GRASP_ITERS << "," << wGrasp << "\n";
         auto end = chrono::high_resolution_clock::now();
         auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
-        cout << "Processed file: " << filename << " | Time taken: " << (duration.count() / (float)1000) << " ms\n"; 
+        cout << "Processed file: " << filename << " | Time taken: " << (duration.count() / (float)1000) << " ms\n";
         delete G;
     }
 

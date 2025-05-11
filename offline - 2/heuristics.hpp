@@ -20,12 +20,16 @@ void print_cuts(unordered_set<int> &X, unordered_set<int> &Y)
 }
 
 pair<unordered_set<int>, unordered_set<int>>
-get_Randomized_max_cuts(Graph *G)
+get_Randomized_max_cuts(Graph *G, unsigned int seed = 0)
 {
-
-    // generate a random number
-    random_device rd;
-    mt19937 gen(rd());
+    // generate a random number with fixed seed if provided
+    mt19937 gen;
+    if (seed != 0) {
+        gen.seed(seed);
+    } else {
+        random_device rd;
+        gen.seed(rd());
+    }
     uniform_real_distribution<> dis(0.0, 1.0);
 
     double total_cut_w = 0;
@@ -44,12 +48,16 @@ get_Randomized_max_cuts(Graph *G)
     return {X_part, Y_part};
 }
 
-double Randomized_max_cut(Graph *G, int n)
+double Randomized_max_cut(Graph *G, int n, unsigned int seed = 0)
 {
-
-    // generate a random number
-    random_device rd;
-    mt19937 gen(rd());
+    // generate a random number with fixed seed if provided
+    mt19937 gen;
+    if (seed != 0) {
+        gen.seed(seed);
+    } else {
+        random_device rd;
+        gen.seed(rd());
+    }
     uniform_real_distribution<> dis(0.0, 1.0);
 
     double total_cut_w = 0;
@@ -126,14 +134,19 @@ Greedy_max_cut(Graph *G)
 }
 
 pair<unordered_set<int>, unordered_set<int>>
-SemiGreedy_max_cut(Graph *G, double alpha)
+SemiGreedy_max_cut(Graph *G, double alpha, unsigned int seed = 0)
 {
-    // for random selection from RCL
-    static bool seeded = false;
-    if (!seeded)
-    {
-        srand((unsigned)time(nullptr));
-        seeded = true;
+    // Initialize random generator with fixed seed if provided
+    if (seed != 0) {
+        srand(seed);
+    } else {
+        // Use current time as seed for random generator only if no seed provided
+        static bool seeded = false;
+        if (!seeded)
+        {
+            srand((unsigned)time(nullptr));
+            seeded = true;
+        }
     }
 
     int n_vertices = G->numVertices();
@@ -245,13 +258,16 @@ SemiGreedy_max_cut(Graph *G, double alpha)
 pair<unordered_set<int>, unordered_set<int>>
 LocalSearch(Graph *G,
             unordered_set<int> X,
-            unordered_set<int> Y)
+            unordered_set<int> Y,
+            int& record_num_iters)
 {
     bool improvement = true;
+    record_num_iters = 0;
 
     // Repeat until we can no longer improve
     while (improvement)
     {
+        record_num_iters++;
         improvement = false;
         double bestDelta = 0.0;
         int best_vertex = -1;
@@ -330,14 +346,19 @@ LocalSearch(Graph *G,
 
 // GRASP Algo: runs maxIters times
 pair<unordered_set<int>, unordered_set<int>>
-GRASP_max_cut(Graph *G, int maxIters, double alpha)
+GRASP_max_cut(Graph *G, int maxIters, double alpha, unsigned int seed = 0)
 {
-    // Seed rand once
-    static bool seeded = false;
-    if (!seeded)
-    {
-        srand((unsigned)time(nullptr));
-        seeded = true;
+    // Initialize with fixed seed if provided
+    if (seed != 0) {
+        srand(seed);
+    } else {
+        // Use current time as seed only if no seed is provided
+        static bool seeded = false;
+        if (!seeded)
+        {
+            srand((unsigned)time(nullptr));
+            seeded = true;
+        }
     }
 
     unordered_set<int> bestX, bestY;
@@ -346,10 +367,11 @@ GRASP_max_cut(Graph *G, int maxIters, double alpha)
     for (int i = 1; i <= maxIters; ++i)
     {
         // FIRST, -> semi-greedy construction (parameter α)
-        auto XY_init = SemiGreedy_max_cut(G, alpha);
+        auto XY_init = SemiGreedy_max_cut(G, alpha, seed);
 
         // SECOND -> local-search improvement
-        auto XY_improved = LocalSearch(G, move(XY_init.first), move(XY_init.second));
+        int num_iters = 0;
+        auto XY_improved = LocalSearch(G, move(XY_init.first), move(XY_init.second), num_iters);
         auto X1 = XY_improved.first;
         auto Y1 = XY_improved.second;
 
