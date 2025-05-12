@@ -105,7 +105,7 @@ int main()
         const int RAND_TRIALS = 100; // for randomized heuristic
         const double ALPHA = 0.4;    // for semi-greedy
         const int GRASP_ITERS = 25;  // GRASP iterations
-        const int LS_ITERS = 5;
+        const int LS_ITERS = 10;
 
         // Randomized construction
         double avgRand = Randomized_max_cut(G, RAND_TRIALS, FIXED_SEED);
@@ -119,8 +119,7 @@ int main()
         double wSemi = G->calc_cut_weight(XY_sg.first, XY_sg.second);
 
         // Random Construction + Local Search
-        double avg_depth;
-        double local_avg;
+        double local_avg = 0.0;
 
         for (int k = 0; k < LS_ITERS; k++)
         {
@@ -128,10 +127,8 @@ int main()
             int depth = 0;
             auto XY_improved = LocalSearch(G, move(XY_random.first), move(XY_random.second), depth);
             double wR1 = G->calc_cut_weight(XY_improved.first, XY_improved.second);
-            avg_depth += depth;
             local_avg += wR1;
         }
-        avg_depth = avg_depth / LS_ITERS;
         local_avg = local_avg / LS_ITERS;
 
         // Full GRASP
@@ -140,7 +137,7 @@ int main()
 
         // Write results to CSV
         string filename = getFileNameWithoutExtension(input_file);
-        csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << avg_depth << "," << local_avg << "," << GRASP_ITERS << "," << wGrasp << "\n";
+        csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << LS_ITERS << "," << local_avg << "," << GRASP_ITERS << "," << wGrasp << "\n";
 
         // csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << wR1 << "," << GRASP_ITERS << "," << wGrasp << "\n";
         auto end = chrono::high_resolution_clock::now();

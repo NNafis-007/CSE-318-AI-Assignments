@@ -28,7 +28,7 @@ int main()
 {
     const unsigned int FIXED_SEED = 2105007;
 
-    string input_file = "graph_GRASP/set1/g18.rud";
+    string input_file = "graph_GRASP/set1/g15.rud";
     ifstream in(input_file);
     if (!in)
     {
@@ -66,18 +66,18 @@ int main()
     const int RAND_TRIALS = 100; // for randomized heuristic
     const double ALPHA = 0.4;    // for semi-greedy
     const int GRASP_ITERS = 10;  // GRASP iterations
-    const int LS_ITERS = 5;  // GRASP iterations
+    const int LS_ITERS = 10;  // GRASP iterations
 
     // Randomized construction
-    double avgRand = Randomized_max_cut(G, RAND_TRIALS, FIXED_SEED);
+    // double avgRand = Randomized_max_cut(G, RAND_TRIALS, FIXED_SEED);
 
-    // Greedy construction
-    auto XY = Greedy_max_cut(G);
-    double wGreedy = G->calc_cut_weight(XY.first, XY.second);
+    // // Greedy construction
+    // auto XY = Greedy_max_cut(G);
+    // double wGreedy = G->calc_cut_weight(XY.first, XY.second);
 
-    // Semi-greedy construction
-    auto XY_sg = SemiGreedy_max_cut(G, ALPHA, FIXED_SEED);
-    double wSemi = G->calc_cut_weight(XY_sg.first, XY_sg.second);
+    // // Semi-greedy construction
+    // auto XY_sg = SemiGreedy_max_cut(G, ALPHA, FIXED_SEED);
+    // double wSemi = G->calc_cut_weight(XY_sg.first, XY_sg.second);
 
     // Random Construction + Local Search
     double avg_depth;
@@ -90,22 +90,18 @@ int main()
         double wR1 = G->calc_cut_weight(XY_improved.first, XY_improved.second);
         avg_depth += depth;
         local_avg += wR1;
+        cout << "Iteration : " << k+1 << " | Result : " << wR1 << "\n";
     }
     avg_depth = avg_depth / (float)LS_ITERS;
     local_avg = local_avg / (float)LS_ITERS;
 
-    auto XY_random = get_Randomized_max_cuts(G, FIXED_SEED);
-    int depth = 0;
-    auto XY_improved = LocalSearch(G, move(XY_random.first), move(XY_random.second), depth);
-    double wR1 = G->calc_cut_weight(XY_improved.first, XY_improved.second);
-
     // Full GRASP
-    auto XY_grasp = GRASP_max_cut(G, GRASP_ITERS, ALPHA, FIXED_SEED);
-    double wGrasp = G->calc_cut_weight(XY_grasp.first, XY_grasp.second);
+    // auto XY_grasp = GRASP_max_cut(G, GRASP_ITERS, ALPHA, FIXED_SEED);
+    // double wGrasp = G->calc_cut_weight(XY_grasp.first, XY_grasp.second);
 
     // Write results to CSV
     string filename = getFileNameWithoutExtension(input_file);
-    cout << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << avg_depth << ","  << local_avg << "," << GRASP_ITERS << "," << wGrasp << "\n";
+    cout << filename << "," << n << "," << m << ","  << LS_ITERS << ","  << local_avg << "\n";
     auto end = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
     cout << "Processed file: " << filename << " | Time taken: " << (duration.count() / (float)1000) << " s\n";

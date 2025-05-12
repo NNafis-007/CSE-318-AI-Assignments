@@ -32,7 +32,6 @@ get_Randomized_max_cuts(Graph *G, unsigned int seed = 0)
     }
     uniform_real_distribution<> dis(0.0, 1.0);
 
-    double total_cut_w = 0;
     int n_vertices = G->numVertices();
 
     unordered_set<int> X_part = {};
@@ -60,7 +59,7 @@ double Randomized_max_cut(Graph *G, int n, unsigned int seed = 0)
     }
     uniform_real_distribution<> dis(0.0, 1.0);
 
-    double total_cut_w = 0;
+    double total_cut_w = 0.0;
     int n_vertices = G->numVertices();
     for (int i = 0; i < n; i++)
     {
@@ -183,8 +182,8 @@ SemiGreedy_max_cut(Graph *G, double alpha, unsigned int seed = 0)
         for (int z : rem_vertices)
         {
             vector<pi> &z_neighbours = G->getNeighbors(z);
-            double sigma_X = 0;
-            double sigma_Y = 0;
+            double sigma_X = 0.0;
+            double sigma_Y = 0.0;
 
             // evaluate the greedy function value and update w_max and w_min
             for (auto &edge : z_neighbours)
