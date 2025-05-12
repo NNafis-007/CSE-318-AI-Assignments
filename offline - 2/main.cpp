@@ -142,7 +142,7 @@ int main()
         // csv_out << filename << "," << n << "," << m << "," << avgRand << "," << wGreedy << "," << wSemi << "," << wR1 << "," << GRASP_ITERS << "," << wGrasp << "\n";
         auto end = chrono::high_resolution_clock::now();
         auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
-        cout << "Processed file: " << filename << " | Time taken: " << (duration.count() / (float)1000) << " ms\n";
+        cout << "Processed file: " << filename << " | Time taken: " << (duration.count() / (float)1000) << "s\n";
         delete G;
     }
 
