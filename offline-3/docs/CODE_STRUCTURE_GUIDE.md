@@ -3,11 +3,10 @@
 ## 📁 **New Project Structure**
 
 ```
-chain_reaction/
+offline-3/
 ├── main.py                  # 🚀 Application entry point
 ├── requirements.txt         # 📦 Dependencies
 ├── __init__.py             # 📦 Root package marker
-├──
 ├── src/                    # 📂 Main source code
 │   ├── __init__.py
 │   ├── config/             # ⚙️ Configuration Layer

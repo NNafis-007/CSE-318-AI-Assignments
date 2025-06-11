@@ -2,6 +2,13 @@
 Test script to verify the modular structure works correctly
 """
 
+import sys
+import os
+
+# Add the project root directory to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
 def test_imports():
     """Test that all modules can be imported successfully"""
     try:
@@ -25,12 +32,17 @@ def test_imports():
         
         from src.core import game_manager
         print("✓ src.core.game_manager imported successfully")
+
+        from src.core.cell import Cell
+        print("✓ src.core.cell imported successfully")
         
         print("\n✅ All modules imported successfully!")
         return True
         
     except ImportError as e:
         print(f"❌ Import error: {e}")
+        print(f"Current Python path: {sys.path}")
+        print(f"Project root: {project_root}")
         return False
 
 def test_enums():
@@ -51,7 +63,8 @@ def test_config():
     print("\nTesting configuration:")
     print(f"Window size: {config.WINDOW_WIDTH}x{config.WINDOW_HEIGHT}")
     print(f"Grid size: {config.GRID_ROWS}x{config.GRID_COLS}")
-    print(f"Cell size: {config.CELL_SIZE}")
+    print(f"Cell col size: {config.CELL_SIZE}")
+    print(f"Cell row size: {config.CELL_SIZE}")
 
 if __name__ == "__main__":
     print("Running modular structure tests...\n")
