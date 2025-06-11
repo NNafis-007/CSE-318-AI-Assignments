@@ -54,5 +54,18 @@ class MenuScreen(EventHandler):
             rect = self.ui_renderer.draw_button(surface, mode.value, button_x, y)
             self.button_rects[mode] = rect
         
+
         # Draw instructions
-        self.ui_renderer.draw_text(surface, "Press ESC to quit", WINDOW_WIDTH // 2, 500, "normal", GRAY)
+        instructions = [
+            " --- Click any cell to place an orb and see cell info ---",
+            " --- Reach critical mass to explode and spread orbs ---",
+            " --- Eliminate all opponent orbs to win ---",
+            " --- Press R to reset |  Press I for game info | ESC to menu ---"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            y_pos = WINDOW_HEIGHT - 80 + (i * 15)
+            self.ui_renderer.draw_text(surface, instruction, WINDOW_WIDTH // 2, y_pos, "small", GRAY)
+
+        # Draw instructions
+        self.ui_renderer.draw_text(surface, "Press ESC to quit", WINDOW_WIDTH // 2, WINDOW_HEIGHT - 120, "normal", GRAY)

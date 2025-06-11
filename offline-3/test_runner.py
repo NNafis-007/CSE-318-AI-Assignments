@@ -50,8 +50,8 @@ def run_basic_game_test():
         print(f"✓ Critical mass: {cell.critical_mass}")
         
         # Test adding orbs
-        will_explode = cell.add_orb(1)
-        print(f"✓ Added orb, will explode: {will_explode}")
+        _ = cell.add_orb(1)
+        print(f"✓ Added orb, will explode: {cell.orb_count >= cell.critical_mass}")
         
         # Test GameBoard
         from src.screens.game_screen import GameBoard
@@ -80,8 +80,8 @@ def run_all_tests():
     structure_ok = run_structure_tests()
     print("\n" + "=" * 50)
     
-    # game_ok = run_basic_game_test()
-    # print("\n" + "=" * 50)
+    game_ok = run_basic_game_test()
+    print("\n" + "=" * 50)
 
     game_ok = True  # Temporarily set to True until game tests are implemented
     

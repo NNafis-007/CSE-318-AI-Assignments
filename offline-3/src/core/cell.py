@@ -22,7 +22,6 @@ class Cell:
         # Game state
         self.orb_count = 0              # Number of orbs in this cell
         self.player = None               # Player who owns this cell (1 or 2)
-        self.is_exploding = False       # Whether cell is currently exploding
         
         # Calculate critical mass based on position
         self.critical_mass = self._calculate_critical_mass()
@@ -61,11 +60,7 @@ class Cell:
         # If cell is empty or owned by the same player
         if self.player is None or self.player == player:
             self.player = player
-            self.orb_count += 1
-            
-            # Check if cell reaches critical mass
-            if self.orb_count >= self.critical_mass:
-                self.is_exploding = True
+            self.orb_count += 1            
             return True
         
         else:
@@ -86,32 +81,27 @@ class Cell:
         """
         return self.player is None or self.player == player
     
-    def explode(self) -> List[Tuple[int, int]]:
+    def explode(self) -> bool:
         """
-        Explode this cell and return coordinates of neighboring cells.
+        Reset cell.
         
         Returns:
-            List[Tuple[int, int]]: List of (row, col) coordinates of neighbors
+        True if explosion was successful, False otherwise.
         """
         if self.orb_count < self.critical_mass:
             print(f"Cell ({self.row}, {self.col}) cannot explode: not enough orbs")
-            return []
+            return False
         
-        # Mark as exploding
-        self.is_exploding = True
         
         # Calculate orbs to distribute (all current orbs)
-        orbs_to_distribute = self.orb_count
+        # orbs_to_distribute = self.orb_count
         
         # Reset this cell
         self.orb_count = 0
         self.player = None
-        
-        # Get valid neighbors
-        neighbors = self._get_neighbors()
-        
+                
         # Each neighbor gets 1 orb
-        return neighbors[:orbs_to_distribute]
+        return True
     
     def _get_neighbors(self) -> List[Tuple[int, int]]:
         """
@@ -136,9 +126,6 @@ class Cell:
         
         return neighbors
     
-    def reset_explosion_state(self):
-        """Reset the explosion state of this cell."""
-        self.is_exploding = False
     
     def is_empty(self) -> bool:
         """Check if the cell is empty."""
@@ -155,7 +142,6 @@ class Cell:
             'orb_count': self.orb_count,
             'player': self.player,
             'critical_mass': self.critical_mass,
-            'is_exploding': self.is_exploding,
             'can_explode': self.orb_count >= self.critical_mass
         }
     

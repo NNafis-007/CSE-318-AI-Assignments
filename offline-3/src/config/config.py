@@ -1,5 +1,5 @@
 # Configuration constants for the game
-WINDOW_WIDTH = 750
+WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 750
 GRID_ROWS = 9
 GRID_COLS = 6
