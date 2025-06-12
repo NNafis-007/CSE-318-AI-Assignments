@@ -101,6 +101,10 @@ class GameBoard:
         chain_length = 0
         
         while len(explosion_queue) > 0:
+            self._check_game_over()
+            if self.game_over:
+                print(f"Game over detected during explosion #{chain_length}, stopping chain.")
+                break
             chain_length += 1
             print(f"Explosion chain #{chain_length}")
             row, col = explosion_queue.pop(0)
@@ -242,39 +246,48 @@ class GameScreen(EventHandler):
         if self.is_processing_turn:
             return None
             
-        cell = self.board.get_cell_from_mouse_pos(pos)
-        if cell:
-            self.selected_cell = cell  # Store selected cell for display
-            
-            # Display detailed cell information
-            print("\n" + "="*50)
-            
-            # Try to place an orb if game is not over
-            if not self.board.game_over:
-                if self.board.place_orb(cell.row, cell.col):
-                    # Set processing flag to prevent input during animations
-                    self.is_processing_turn = True
-                                        
-                    # Print updated game state
-                    state = self.board.get_game_state()
-                    print(f"\n📊 GAME STATE:")
-                    print(f"Current Player: {state['current_player']}")
-                    print(f"Total Moves: {state['total_moves']}")
-                    print(f"Player 1 Cells: {state['player1_cells']}")
-                    print(f"Player 2 Cells: {state['player2_cells']}")
-                    print(f"Total Orbs: {state['total_orbs']}")
-                    
-                    if state['last_chain_length'] > 1:
-                        print(f"💥 Chain Reaction Length: {state['last_chain_length']}")
-                    
-                    if state['game_over']:
-                        print(f"🎉 GAME OVER! Player {state['winner']} wins!")
-                    print("="*50)
-                else:
-                    print(f"❌ Cannot place orb at ({cell.row}, {cell.col}) - invalid move")
-            else:
-                print(f"🎮 Game is over! Player {self.board.winner} has won!")
+        if self.game_mode == GameMode.TWO_PLAYER:
+            cell = self.board.get_cell_from_mouse_pos(pos)
+            if cell:
+                self.selected_cell = cell  # Store selected cell for display
                 
+                # Display detailed cell information
+                print("\n" + "="*50)
+                
+                # Try to place an orb if game is not over
+                if not self.board.game_over:
+                    if self.board.place_orb(cell.row, cell.col):
+                        # Set processing flag to prevent input during animations
+                        self.is_processing_turn = True
+                                            
+                        # Print updated game state
+                        state = self.board.get_game_state()
+                        print(f"\n📊 GAME STATE:")
+                        print(f"Current Player: {state['current_player']}")
+                        print(f"Total Moves: {state['total_moves']}")
+                        print(f"Player 1 Cells: {state['player1_cells']}")
+                        print(f"Player 2 Cells: {state['player2_cells']}")
+                        print(f"Total Orbs: {state['total_orbs']}")
+                        
+                        if state['last_chain_length'] > 1:
+                            print(f"💥 Chain Reaction Length: {state['last_chain_length']}")
+                        
+                        if state['game_over']:
+                            print(f"🎉 GAME OVER! Player {state['winner']} wins!")
+                        print("="*50)
+                    else:
+                        print(f"❌ Cannot place orb at ({cell.row}, {cell.col}) - invalid move")
+                else:
+                    print(f"🎮 Game is over! Player {self.board.winner} has won!")
+                
+        elif self.game_mode == GameMode.HUMAN_VS_AI:
+            print("Huamn vs AI mode not implemented yet!")
+
+        elif self.game_mode == GameMode.AI_VS_AI:
+            print("AI vs AI mode not implemented yet!")
+        else:
+            print("Unknown game mode selected!")
+
         return None
     
     def handle_key_press(self, key: int) -> Optional[str]:
