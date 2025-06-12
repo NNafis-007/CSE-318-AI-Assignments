@@ -60,7 +60,6 @@ class MenuScreen(EventHandler):
             " --- Click any cell to place an orb and see cell info ---",
             " --- Reach critical mass to explode and spread orbs ---",
             " --- Eliminate all opponent orbs to win ---",
-            " --- Press R to reset |  Press I for game info | ESC to menu ---"
         ]
         
         for i, instruction in enumerate(instructions):

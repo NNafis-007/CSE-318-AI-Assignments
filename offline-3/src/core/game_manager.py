@@ -83,7 +83,21 @@ class Game:
     
     def update(self):
         """Update game logic"""
-        pass  # Game logic updates would go here
+        # Get delta time for smooth animations
+        dt = self.clock.get_time() / 1000.0  # Convert to seconds
+        
+        # Update animations if we're in game state
+        if (self.state_manager.current_state == GameState.GAME and 
+            self.state_manager.game_screen):
+            game_screen = self.state_manager.game_screen
+            
+            # Update board animations
+            game_screen.board.animation_manager.update(dt)
+            
+            # Check if animations are complete to allow next input
+            if (game_screen.is_processing_turn and 
+                game_screen.board.animation_manager.wait_for_completion()):
+                game_screen.is_processing_turn = False
     
     def draw(self):
         """Draw everything to the screen"""

@@ -1,18 +1,11 @@
 import pygame
-from typing import Optional, Tuple
-from src.core.interfaces import EventHandler
-from src.ui.ui_renderer import UIRenderer
-from src.config.enums import GameMode
-from src.config.config import *
-from src.core.cell import Cell
-
-import pygame
 from typing import Optional, Tuple, List
 from src.core.interfaces import EventHandler
 from src.ui.ui_renderer import UIRenderer
 from src.config.enums import GameMode
 from src.config.config import *
 from src.core.cell import Cell
+from src.ui.animation import AnimationManager
 
 class GameBoard:
     """Represents the Chain Reaction game board with cell-based logic"""
@@ -24,13 +17,15 @@ class GameBoard:
         self.game_over = False
         self.winner = None
         self.player_cells = {1: 0, 2: 0}  # Track cells owned by each player
-        
-        # Create a 2D grid of Cell objects
+          # Create a 2D grid of Cell objects
         self.board = [[Cell(row, col) for col in range(cols)] for row in range(rows)]
         
         # Game statistics
         self.total_moves = 0
         self.explosion_chain_length = 0
+        
+        # Add animation manager
+        self.animation_manager = AnimationManager()
     
     def is_valid_position(self, row: int, col: int) -> bool:
         """Check if the given position is valid"""
@@ -100,6 +95,7 @@ class GameBoard:
         Args:
             initial_explosion: Cell (row, col) coordinates to explode
         """
+        
         explosion_queue : List[Tuple[int,int]] = []
         explosion_queue.append(initial_explosion)
         chain_length = 0
@@ -111,19 +107,30 @@ class GameBoard:
             
             # Process all current explosions
             cell = self.get_cell(row, col)
-            print(f"Processing explosion at ({row}, {col})")
-
-            # Explode if cell is valid and has enough orbs
+            print(f"Processing explosion at ({row}, {col})")            # Explode if cell is valid and has enough orbs
             if cell and cell.orb_count >= cell.critical_mass:
+                
                 # Get neighbors that will receive orbs
                 neighbors = cell._get_neighbors()
                 have_exploded = cell.explode()
                 
+                # Add explosion effect animation
+                self.animation_manager.add_explosion_effect((row, col), duration=0.5)
+
+                
                 print(f"Cell ({row}, {col}) explosion : {have_exploded}, affecting neighbors {neighbors}")
                 
-                # Distribute orbs to neighbors
+                # Distribute orbs to neighbors with animation
                 if have_exploded:
                     for neighbor_row, neighbor_col in neighbors:
+                        # Add moving orb animation from exploding cell to neighbor
+                        self.animation_manager.add_moving_orb(
+                            start_cell=(row, col),
+                            end_cell=(neighbor_row, neighbor_col),
+                            player=self.current_player,
+                            duration=1.0
+                        )
+                        
                         neighbor_cell = self.get_cell(neighbor_row, neighbor_col)
                         if neighbor_cell:
                             # Add orb from explosion (always from current player)
@@ -192,13 +199,16 @@ class GameBoard:
                 cell.orb_count = 0
                 cell.player = None
                 cell.is_exploding = False
-        
         self.current_player = 1
         self.game_over = False
         self.winner = None
         self.total_moves = 0
         self.explosion_chain_length = 0
         self.player_cells = {1: 0, 2: 0}
+        
+        # Clear all animations
+        self.animation_manager.clear_all()
+        
         print("Game reset!")
 
     def get_cell_from_mouse_pos(self, mouse_pos: Tuple[int, int]) -> Optional[Cell]:
@@ -219,15 +229,19 @@ class GameBoard:
 
 class GameScreen(EventHandler):
     """Handles the game screen with Chain Reaction logic"""
-    
     def __init__(self, ui_renderer: UIRenderer, game_mode: GameMode):
         self.ui_renderer = ui_renderer
         self.game_mode = game_mode
         self.board = GameBoard()
         self.selected_cell = None  # Track selected cell for info display
-    
+        self.is_processing_turn = False  # Prevent input during animations
+
     def handle_mouse_click(self, pos: tuple[int, int]) -> Optional[str]:
         """Handle mouse clicks on the game board"""
+        # Don't process clicks during animations
+        if self.is_processing_turn:
+            return None
+            
         cell = self.board.get_cell_from_mouse_pos(pos)
         if cell:
             self.selected_cell = cell  # Store selected cell for display
@@ -237,7 +251,10 @@ class GameScreen(EventHandler):
             
             # Try to place an orb if game is not over
             if not self.board.game_over:
-                if self.board.place_orb(cell.row, cell.col):                    
+                if self.board.place_orb(cell.row, cell.col):
+                    # Set processing flag to prevent input during animations
+                    self.is_processing_turn = True
+                                        
                     # Print updated game state
                     state = self.board.get_game_state()
                     print(f"\n📊 GAME STATE:")
@@ -267,6 +284,7 @@ class GameScreen(EventHandler):
         elif key == pygame.K_r:  # Reset game with 'R' key
             self.board.reset_game()
             self.selected_cell = None
+            self.is_processing_turn = False  # Reset processing flag
             print("🔄 Game reset! Press R again anytime to reset.")
         elif key == pygame.K_i:  # Info key - show game state
             state = self.board.get_game_state()
@@ -290,6 +308,11 @@ class GameScreen(EventHandler):
         # Draw title with current game mode
         self.ui_renderer.draw_text(surface, f"Chain Reaction - {self.game_mode.value}", 
                                  WINDOW_WIDTH // 2, 30, "title")
+        
+        instruction = " --- Press R to reset | ESC to menu ---"
+        # Draw instructions
+        self.ui_renderer.draw_text(surface, instruction , WINDOW_WIDTH // 2, WINDOW_HEIGHT - 30, "normal", BLACK)
+
         
         # Draw game state information
         state = self.board.get_game_state()
@@ -317,15 +340,23 @@ class GameScreen(EventHandler):
             else:
                 color = GRAY
             self.ui_renderer.draw_text(surface, text, 80, WINDOW_HEIGHT - 150 + i * 30, "small", color)
-        
-        # Draw the grid
+          # Draw the grid
         self.ui_renderer.draw_grid(surface)
         
-        # Draw cells with orbs
+        # Draw cells with orbs (static state)
         self._draw_game_pieces(surface)
+        
+        # Draw animations on top
+        self.board.animation_manager.draw(surface)
         
         # Draw selected cell info on screen
         if self.selected_cell:
+            self._draw_selected_cell_info(surface)
+        
+        # Show animation status
+        if self.is_processing_turn:
+            self.ui_renderer.draw_text(surface, "Processing turn...", 
+                                     WINDOW_WIDTH // 2, WINDOW_HEIGHT - 30, "small", GRAY)
             self._draw_selected_cell_info(surface)
         
     
@@ -395,6 +426,7 @@ class GameScreen(EventHandler):
         panel_rect = pygame.Rect(info_x - 10, info_y - 10, panel_width, panel_height)
         pygame.draw.rect(surface, (240, 240, 240), panel_rect)
         pygame.draw.rect(surface, BLACK, panel_rect, 2)
+
         
         # Draw cell information
         info_lines = [
