@@ -1,7 +1,7 @@
 import pygame
 import sys
-from typing import Optional
-from src.config.enums import GameState, GameMode
+from typing import Optional, Tuple
+from src.config.enums import GameState, GameMode, AIDifficulty, AIHeuristic
 from src.ui.ui_renderer import UIRenderer
 from src.screens.menu_screen import MenuScreen
 from src.screens.game_screen import GameScreen
@@ -17,12 +17,11 @@ class GameStateManager:
         self.menu_screen = MenuScreen(self.ui_renderer)
         self.game_screen: Optional[GameScreen] = None
     
-    def transition_to_game(self, game_mode: GameMode):
-        """Transition to game state with specified mode"""
+    def transition_to_game(self, game_mode: GameMode, ai_difficulty: AIDifficulty = AIDifficulty.MEDIUM, ai_heuristic: AIHeuristic = AIHeuristic.WEIGHTED_COMBINED):
+        """Transition to game state with specified mode and AI settings"""
         self.current_mode = game_mode
         self.current_state = GameState.GAME
-        self.game_screen = GameScreen(self.ui_renderer, game_mode)
-    
+        self.game_screen = GameScreen(self.ui_renderer, game_mode, ai_difficulty, ai_heuristic)    
     def transition_to_menu(self):
         """Transition back to menu state"""
         self.current_state = GameState.MENU
@@ -32,9 +31,10 @@ class GameStateManager:
     def handle_mouse_click(self, pos: tuple[int, int]):
         """Handle mouse click events based on current state"""
         if self.current_state == GameState.MENU:
-            selected_mode = self.menu_screen.handle_mouse_click(pos)
-            if selected_mode:
-                self.transition_to_game(selected_mode)
+            result = self.menu_screen.handle_mouse_click(pos)
+            if result:
+                game_mode, ai_difficulty, ai_heuristic = result
+                self.transition_to_game(game_mode, ai_difficulty, ai_heuristic)
         elif self.current_state == GameState.GAME and self.game_screen:
             self.game_screen.handle_mouse_click(pos)
     

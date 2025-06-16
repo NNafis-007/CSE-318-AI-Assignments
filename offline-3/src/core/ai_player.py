@@ -12,20 +12,20 @@ import colors
 import random
 
 class AIPlayer:
-    def __init__(self, color, difficulty=3, heuristic_name='basic'):
+    def __init__(self, color, difficulty=3, heuristic_name='weighted_combined'):
         self.color = color
         self.difficulty = difficulty  # depth for minimax
         self.heuristic_function = self._get_heuristic_function(heuristic_name)
     
     def _get_heuristic_function(self, heuristic_name):
         heuristic_map = {
-            'basic': utils.heuristic,
+            'weighted_combined': utils.heuristic_weighted_combined,
             'orb_count': utils.heuristic_orb_count_diff,
             'edge_corner': utils.heuristic_edge_corner_control,
-            'vulnerability': utils.heuristic_vulnerability,
+            'strategic': utils.heuristic_strategic_evaluation,
             'chain_reaction': utils.heuristic_chain_reaction_opportunity
         }
-        return heuristic_map.get(heuristic_name, utils.heuristic)
+        return heuristic_map.get(heuristic_name, utils.heuristic_weighted_combined)
     
     def get_best_move(self, board):
         """Get the best move for the AI using minimax algorithm"""

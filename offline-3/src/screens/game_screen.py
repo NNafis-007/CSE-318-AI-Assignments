@@ -3,7 +3,7 @@ import os
 from typing import Optional, Tuple, List
 from src.core.interfaces import EventHandler
 from src.ui.ui_renderer import UIRenderer
-from src.config.enums import GameMode
+from src.config.enums import GameMode, AIDifficulty, AIHeuristic
 from src.config.config import *
 from src.core.cell import Cell
 from src.ui.animation import AnimationManager
@@ -328,7 +328,7 @@ class GameBoard:
         return None
 class GameScreen(EventHandler):
     """Handles the game screen with Chain Reaction logic"""
-    def __init__(self, ui_renderer: UIRenderer, game_mode: GameMode):
+    def __init__(self, ui_renderer: UIRenderer, game_mode: GameMode, ai_difficulty: AIDifficulty = AIDifficulty.MEDIUM, ai_heuristic: AIHeuristic = AIHeuristic.WEIGHTED_COMBINED):
         self.ui_renderer = ui_renderer
         self.game_mode = game_mode
         self.board = GameBoard()
@@ -338,8 +338,8 @@ class GameScreen(EventHandler):
         # AI-related attributes
         self.ai_player = None
         self.human_player = 1  # Default: Human is player 1
-        self.ai_difficulty = 3  # Default difficulty
-        self.ai_heuristic = 'basic'  # Default heuristic
+        self.ai_difficulty = ai_difficulty.depth  # Use the depth value
+        self.ai_heuristic = ai_heuristic.key  # Use the key value
           # Initialize AI for Human vs AI mode
         if self.game_mode == GameMode.HUMAN_VS_AI:
             self._setup_ai_mode()

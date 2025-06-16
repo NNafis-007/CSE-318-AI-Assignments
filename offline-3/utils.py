@@ -32,22 +32,141 @@ def undo_move(state:Board.Board,undo_info:list[list[int]]):
 def result_board(state:Board.Board,valid_moves:list[int],maximizing_player):
     deep_copied_board = custom_copy(state)
     i,j = valid_moves
-    deep_copied_board.make_move(maximizing_player,i,j)
-    #deep_copied_board.print_board()
+    deep_copied_board.make_move(maximizing_player,i,j)    #deep_copied_board.print_board()
     #print()
     #print()
     return deep_copied_board
 
-def heuristic(state:Board.Board,player):
-    count = 0
-    for row in state.grid:
-        for cell in row:
-            if cell.player == 1:  # RED player
-                count += 1
-            elif cell.player == 2:  # BLUE player
-                count -= 1
-    #print(f"heuristic: {count}")
-    return count 
+def heuristic_weighted_combined(state: Board.Board, player):
+    """
+    Weighted combination heuristic:
+    1 * edge_corner_control + 2 * strategic_evaluation
+    """
+    edge_corner_score = heuristic_edge_corner_control(state, player)
+    strategic_score = heuristic_strategic_evaluation(state, player)
+    
+    return 1 * edge_corner_score + 2 * strategic_score
+
+def heuristic_strategic_evaluation(state: Board.Board, player):
+    """
+    Strategic heuristic based on game state evaluation:
+    - Win/loss: ±10000
+    - Orb vulnerability to critical enemies: -5 + critical_mass
+    - Safe orb bonuses: +2 (edge), +3 (corner), +2 (critical)
+    - Orb count: +1 per orb
+    - Critical block bonuses: +2 * block_size for contiguous critical blocks
+    """
+    player_num = 1 if player == colors.RED else 2
+    enemy_num = 2 if player == colors.RED else 1
+    
+    # Check for terminal states
+    terminal_result = who_won(state)
+    if terminal_result != 0:
+        if (player == colors.RED and terminal_result > 0) or (player == colors.BLUE and terminal_result < 0):
+            return 10000  # Win
+        else:
+            return -10000  # Loss
+    
+    score = 0
+    
+    # Track visited cells for contiguous block detection
+    visited = [[False for _ in range(state.cols)] for _ in range(state.rows)]
+    
+    for i in range(state.rows):
+        for j in range(state.cols):
+            cell = state.grid[i][j]
+            
+            # Only consider player's orbs
+            if cell.player == player_num and cell.orb_count > 0:
+                # Base score: +1 for each orb
+                score += cell.orb_count
+                
+                # Check for critical enemy cells surrounding this orb
+                critical_enemies = []
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    ni, nj = i + dx, j + dy
+                    if 0 <= ni < state.rows and 0 <= nj < state.cols:
+                        neighbor = state.grid[ni][nj]
+                        if (neighbor.player == enemy_num and 
+                            neighbor.orb_count == state.get_critical_mass(ni, nj) - 1):
+                            critical_enemies.append((ni, nj))
+                
+                if critical_enemies:
+                    # Subtract penalty for each critical enemy
+                    for enemy_pos in critical_enemies:
+                        enemy_critical_mass = state.get_critical_mass(enemy_pos[0], enemy_pos[1])
+                        score -= (5 - enemy_critical_mass)
+                else:
+                    # No critical enemies, add positional bonuses
+                    is_corner = ((i == 0 or i == state.rows - 1) and 
+                               (j == 0 or j == state.cols - 1))
+                    is_edge = (i == 0 or i == state.rows - 1 or 
+                              j == 0 or j == state.cols - 1)
+                    is_critical = cell.orb_count == state.get_critical_mass(i, j) - 1
+                    
+                    if is_corner:
+                        score += 3
+                    elif is_edge:
+                        score += 2
+                    
+                    if is_critical:
+                        score += 2
+    
+    # Find contiguous blocks of critical cells
+    for i in range(state.rows):
+        for j in range(state.cols):
+            cell = state.grid[i][j]
+            if (not visited[i][j] and cell.player == player_num and 
+                cell.orb_count == state.get_critical_mass(i, j) - 1):
+                # Start a new block search
+                block_size = _get_critical_block_size(state, i, j, player_num, visited)
+                if block_size > 0:
+                    score += 2 * block_size
+    
+    return score if player == colors.RED else -score
+
+def _get_critical_block_size(state: Board.Board, start_i: int, start_j: int, player_num: int, visited: list) -> int:
+    """
+    Helper function to calculate the size of a contiguous block of critical cells.
+    Uses DFS to find all connected critical cells of the same player.
+    """
+    if (start_i < 0 or start_i >= state.rows or start_j < 0 or start_j >= state.cols or
+        visited[start_i][start_j]):
+        return 0
+    
+    cell = state.grid[start_i][start_j]
+    if (cell.player != player_num or 
+        cell.orb_count != state.get_critical_mass(start_i, start_j) - 1):
+        return 0
+    
+    visited[start_i][start_j] = True
+    size = 1
+    
+    # Check all four directions
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        ni, nj = start_i + dx, start_j + dy
+        size += _get_critical_block_size(state, ni, nj, player_num, visited)
+    
+    return size
+
+def heuristic_chain_reaction_opportunity(state:Board.Board,player):
+    reward = 0
+    player_num = 1 if player == colors.RED else 2
+    for i in range(state.rows):
+        for j in range(state.cols):
+            cell = state.grid[i][j]
+            if cell.player == player_num:
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    ni, nj = i + dx, j + dy
+                    if 0 <= ni < state.rows and 0 <= nj < state.cols:
+                        neighbor = state.grid[ni][nj]
+                        if neighbor.player is not None and neighbor.player != player_num:
+                            if neighbor.orb_count == state.get_critical_mass(ni, nj) - 1:
+                                reward += 3
+    if (player==colors.RED):
+        return reward
+    
+    return -reward 
 
 def heuristic_orb_count_diff(state:Board.Board,player):
     score = 0
@@ -81,43 +200,6 @@ def heuristic_edge_corner_control(state:Board.Board,player):
     if (player==colors.RED):
         return score    
     return -score
-
-def heuristic_vulnerability(state:Board.Board,player):
-    penalty = 0
-    player_num = 1 if player == colors.RED else 2
-    for i in range(state.rows):
-        for j in range(state.cols):
-            cell = state.grid[i][j]
-            if cell.player == player_num and cell.orb_count >= state.get_critical_mass(i, j) - 1:
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    ni, nj = i + dx, j + dy
-                    if 0 <= ni < state.rows and 0 <= nj < state.cols:
-                        neighbor = state.grid[ni][nj]
-                        if neighbor.player is not None and neighbor.player != player_num:
-                            penalty -= 2
-    if (player==colors.RED):
-        return penalty
-    
-    return -penalty 
-
-def heuristic_chain_reaction_opportunity(state:Board.Board,player):
-    reward = 0
-    player_num = 1 if player == colors.RED else 2
-    for i in range(state.rows):
-        for j in range(state.cols):
-            cell = state.grid[i][j]
-            if cell.player == player_num:
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    ni, nj = i + dx, j + dy
-                    if 0 <= ni < state.rows and 0 <= nj < state.cols:
-                        neighbor = state.grid[ni][nj]
-                        if neighbor.player is not None and neighbor.player != player_num:
-                            if neighbor.orb_count == state.get_critical_mass(ni, nj) - 1:
-                                reward += 3
-    if (player==colors.RED):
-        return reward
-    
-    return -reward 
 
 
 
@@ -159,7 +241,7 @@ def who_won(state:Board.Board)->int:
     return 0
 
 
-def get_best_move(state: Board.Board, player, depth=3, heuristic_func=heuristic):
+def get_best_move(state: Board.Board, player, depth=3, heuristic_func=heuristic_weighted_combined):
     """
     Get the best move for the AI player using minimax algorithm.
     
