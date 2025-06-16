@@ -46,3 +46,4 @@ DARK_GRAY = (64, 64, 64)
 FPS = 60
 BUTTON_WIDTH = 200
 BUTTON_HEIGHT = 50
+TIME_LIMIT = 10 # Time limit for each AI turn in seconds

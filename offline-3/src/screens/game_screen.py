@@ -332,7 +332,6 @@ class GameScreen(EventHandler):
         self.ui_renderer = ui_renderer
         self.game_mode = game_mode
         self.board = GameBoard()
-        self.selected_cell = None  # Track selected cell for info display
         self.is_processing_turn = False  # Prevent input during animations
         
         # AI-related attributes
@@ -353,7 +352,6 @@ class GameScreen(EventHandler):
         if self.game_mode == GameMode.TWO_PLAYER:
             cell = self.board.get_cell_from_mouse_pos(pos)
             if cell:
-                self.selected_cell = cell  # Store selected cell for display
                 
                 # Display detailed cell information
                 print("\n" + "="*50)
@@ -501,16 +499,6 @@ class GameScreen(EventHandler):
         # Draw animations on top
         self.board.animation_manager.draw(surface)
         
-        # Draw selected cell info on screen
-        # if self.selected_cell:
-        #     self._draw_selected_cell_info(surface)
-        
-        # Show animation status
-        if self.is_processing_turn:
-            self.ui_renderer.draw_text(surface, "Processing turn...", 
-                                     WINDOW_WIDTH // 2, WINDOW_HEIGHT - 30, "small", GRAY)
-            self._draw_selected_cell_info(surface)
-        
     
     def _draw_game_pieces(self, surface: pygame.Surface):
         """Draw orbs in each cell based on current game state"""
@@ -562,36 +550,8 @@ class GameScreen(EventHandler):
                     count_text = font.render(str(cell.orb_count), True, text_color)
                     text_rect = count_text.get_rect(center=(cell_x, cell_y + 20))
                     surface.blit(count_text, text_rect)
-    
-    def _draw_selected_cell_info(self, surface: pygame.Surface):
-        """Draw information about the selected cell on screen"""
-        if not self.selected_cell:
-            return
-        
-        cell = self.selected_cell
-        info_x = 20
-        info_y = 120
-        
-        # Draw info panel background
-        panel_width = 250
-        panel_height = 140
-        panel_rect = pygame.Rect(info_x - 10, info_y - 10, panel_width, panel_height)
-        pygame.draw.rect(surface, (240, 240, 240), panel_rect)
-        pygame.draw.rect(surface, BLACK, panel_rect, 2)
 
         
-        # Draw cell information
-        info_lines = [
-            f"Selected Cell: ({cell.row}, {cell.col})",
-            f"Orb Count: {cell.orb_count}",
-            f"Owner: Player {cell.player if cell.player else 'None'}",
-            f"Critical Mass: {cell.critical_mass}",
-            f"Neighbors: {len(cell._get_neighbors())}",
-            f"Can Place: {'Yes' if cell.can_place_orb(self.board.current_player) else 'No'}"
-        ]
-        
-        for i, line in enumerate(info_lines):
-            self.ui_renderer.draw_text(surface, line, info_x, info_y + i * 18, "small", BLACK, False)
     
     # Codes For Human vs AI mode
     def _setup_ai_mode(self):
