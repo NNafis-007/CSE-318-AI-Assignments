@@ -32,9 +32,7 @@ def undo_move(state:Board.Board,undo_info:list[list[int]]):
 def result_board(state:Board.Board,valid_moves:list[int],maximizing_player):
     deep_copied_board = custom_copy(state)
     i,j = valid_moves
-    deep_copied_board.make_move(maximizing_player,i,j)    #deep_copied_board.print_board()
-    #print()
-    #print()
+    deep_copied_board.make_move(maximizing_player,i,j)
     return deep_copied_board
 
 def heuristic_weighted_combined(state: Board.Board, player):
@@ -42,10 +40,10 @@ def heuristic_weighted_combined(state: Board.Board, player):
     Weighted combination heuristic:
     1 * edge_corner_control + 2 * strategic_evaluation
     """
-    edge_corner_score = heuristic_edge_corner_control(state, player)
+    chain_reaction = heuristic_chain_reaction_opportunity(state, player)
     strategic_score = heuristic_strategic_evaluation(state, player)
     
-    return 1 * edge_corner_score + 2 * strategic_score
+    return 1 * chain_reaction + 2 * strategic_score
 
 def heuristic_strategic_evaluation(state: Board.Board, player):
     """
@@ -204,6 +202,7 @@ def heuristic_edge_corner_control(state:Board.Board,player):
 
 
 def valid_moves(state:Board.Board,player):
+    """Get all valid moves for a player."""
     valid_moves = []
     player_num = 1 if player == colors.RED else 2
     for r in range(state.rows):
@@ -211,12 +210,10 @@ def valid_moves(state:Board.Board,player):
             cell = state.grid[r][c]
             if cell.player == player_num or cell.player is None:
                 valid_moves.append((r, c))
-    #print(f"valid moves:{valid_moves}")
     return valid_moves
 
-#3:36 pm - 3:54 pm  
 def who_won(state:Board.Board)->int:
-    #print("reaching base case!")
+    """Check who won the game. Returns 1e9 for red win, -1e9 for blue win, 0 for draw."""
     has_Red = False
     has_Blue = False
     for rows in state.grid:
@@ -224,21 +221,15 @@ def who_won(state:Board.Board)->int:
             if cell.player == 1:  # RED player
                 has_Red = True
             elif cell.player == 2:  # BLUE player
-                has_Blue=True
-                if(has_Red==True and has_Blue==True):
-                 #board filled but no one dominant color
-                 print("draw!")
-                 return 0
-    if(has_Red==True):
-        #red won, +INF
-        #print("red won!")
-        return int(1e9)
-    #blue won, -INF
+                has_Blue = True
+                if has_Red and has_Blue:
+                    return 0  # Draw - both players have orbs
+    
+    if has_Red:
+        return int(1e9)  # Red won
     elif has_Blue:
-        #print("blue won!")
-        return -int(1e9)
-    #print("draw!")
-    return 0
+        return -int(1e9)  # Blue won
+    return 0  # Draw
 
 
 def get_best_move(state: Board.Board, player, depth=3, heuristic_func=heuristic_weighted_combined):
