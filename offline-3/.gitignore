@@ -1,2 +1,25 @@
-chain_reaction
-__pycache__
+# Virtual environment
+chain_reaction/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Game state files (optional - remove if you want to track game states)
+gamestate.txt
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -2,15 +2,21 @@ import copy
 import Board
 import colors
 
+# Get grid configuration
+try:
+    from src.config.config import GRID_ROWS, GRID_COLS
+except ImportError:
+    GRID_ROWS, GRID_COLS = 9, 6
+
 def custom_copy(state:Board.Board):
-    b = Board.Board()
-    for i in range(9):
-        for j in range(6):
+    b = Board.Board(state.rows, state.cols)
+    for i in range(state.rows):
+        for j in range(state.cols):
             b.grid[i][j].player = state.grid[i][j].player
             b.grid[i][j].orb_count = state.grid[i][j].orb_count
     return b 
 def make_move_with_undo_information(state:Board.Board,valid_moves:list[int],maximizing_player):
-    logged = [[False for _ in range(6)] for _ in range(9)]
+    logged = [[False for _ in range(state.cols)] for _ in range(state.rows)]
     undo_info = []
     i,j = valid_moves
     state.make_move(maximizing_player,i,j,logged,undo_info)
@@ -61,13 +67,13 @@ def heuristic_orb_count_diff(state:Board.Board,player):
 def heuristic_edge_corner_control(state:Board.Board,player):
     score = 0
     player_num = 1 if player == colors.RED else 2
-    for i in range(9):
-        for j in range(6):
+    for i in range(state.rows):
+        for j in range(state.cols):
             cell = state.grid[i][j]
             if cell.player == player_num:
-                if (i in [0, 8]) and (j in [0, 5]):
+                if (i in [0, state.rows - 1]) and (j in [0, state.cols - 1]):
                     score += 3  # corner
-                elif i in [0, 8] or j in [0, 5]:
+                elif i in [0, state.rows - 1] or j in [0, state.cols - 1]:
                     score += 2  # edge
                 else:
                     score += 1  # center
@@ -79,13 +85,13 @@ def heuristic_edge_corner_control(state:Board.Board,player):
 def heuristic_vulnerability(state:Board.Board,player):
     penalty = 0
     player_num = 1 if player == colors.RED else 2
-    for i in range(9):
-        for j in range(6):
+    for i in range(state.rows):
+        for j in range(state.cols):
             cell = state.grid[i][j]
             if cell.player == player_num and cell.orb_count >= state.get_critical_mass(i, j) - 1:
                 for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                     ni, nj = i + dx, j + dy
-                    if 0 <= ni < 9 and 0 <= nj < 6:
+                    if 0 <= ni < state.rows and 0 <= nj < state.cols:
                         neighbor = state.grid[ni][nj]
                         if neighbor.player is not None and neighbor.player != player_num:
                             penalty -= 2
@@ -97,13 +103,13 @@ def heuristic_vulnerability(state:Board.Board,player):
 def heuristic_chain_reaction_opportunity(state:Board.Board,player):
     reward = 0
     player_num = 1 if player == colors.RED else 2
-    for i in range(9):
-        for j in range(6):
+    for i in range(state.rows):
+        for j in range(state.cols):
             cell = state.grid[i][j]
             if cell.player == player_num:
                 for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                     ni, nj = i + dx, j + dy
-                    if 0 <= ni < 9 and 0 <= nj < 6:
+                    if 0 <= ni < state.rows and 0 <= nj < state.cols:
                         neighbor = state.grid[ni][nj]
                         if neighbor.player is not None and neighbor.player != player_num:
                             if neighbor.orb_count == state.get_critical_mass(ni, nj) - 1:
@@ -118,8 +124,8 @@ def heuristic_chain_reaction_opportunity(state:Board.Board,player):
 def valid_moves(state:Board.Board,player):
     valid_moves = []
     player_num = 1 if player == colors.RED else 2
-    for r in range(9):
-        for c in range(6):
+    for r in range(state.rows):
+        for c in range(state.cols):
             cell = state.grid[r][c]
             if cell.player == player_num or cell.player is None:
                 valid_moves.append((r, c))

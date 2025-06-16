@@ -593,6 +593,7 @@ class GameScreen(EventHandler):
         for i, line in enumerate(info_lines):
             self.ui_renderer.draw_text(surface, line, info_x, info_y + i * 18, "small", BLACK, False)
     
+    # Codes For Human vs AI mode
     def _setup_ai_mode(self):
         """Setup AI player for Human vs AI mode"""
         try:

@@ -1,13 +1,23 @@
 """
 Board class for Chain Reaction game.
 Compatible with the existing Cell structure in src/core/cell.py
+Supports configurable grid sizes.
 """
+
+# Import grid configuration
+try:
+    from src.config.config import GRID_ROWS, GRID_COLS
+except ImportError:
+    # Fallback values if config is not available
+    GRID_ROWS, GRID_COLS = 9, 6
 
 class SimpleCell:
     """Simple cell class for AI compatibility"""
-    def __init__(self, row, col):
+    def __init__(self, row, col, grid_rows=GRID_ROWS, grid_cols=GRID_COLS):
         self.row = row
         self.col = col
+        self.grid_rows = grid_rows
+        self.grid_cols = grid_cols
         self.player = None
         self.orb_count = 0
         self.critical_mass = self._calculate_critical_mass()
@@ -15,12 +25,12 @@ class SimpleCell:
     def _calculate_critical_mass(self):
         """Calculate critical mass based on position"""
         # Corner cells (2 neighbors)
-        if ((self.row == 0 or self.row == 8) and 
-            (self.col == 0 or self.col == 5)):
+        if ((self.row == 0 or self.row == self.grid_rows - 1) and 
+            (self.col == 0 or self.col == self.grid_cols - 1)):
             return 2
         # Edge cells (3 neighbors)
-        elif (self.row == 0 or self.row == 8 or 
-              self.col == 0 or self.col == 5):
+        elif (self.row == 0 or self.row == self.grid_rows - 1 or 
+              self.col == 0 or self.col == self.grid_cols - 1):
             return 3
         # Center cells (4 neighbors)
         else:
@@ -37,13 +47,15 @@ class SimpleCell:
 class Board:
     """
     Represents the game board for Chain Reaction.
+    Supports configurable grid sizes.
     """
     
-    def __init__(self):
-        """Initialize the board with empty cells."""
-        self.grid = [[SimpleCell(i, j) for j in range(6)] for i in range(9)]
-        self.rows = 9
-        self.cols = 6
+    def __init__(self, rows=None, cols=None):
+        """Initialize the board with configurable dimensions."""
+        self.rows = rows or GRID_ROWS
+        self.cols = cols or GRID_COLS
+        self.grid = [[SimpleCell(i, j, self.rows, self.cols) 
+                     for j in range(self.cols)] for i in range(self.rows)]
     
     def make_move(self, player, row, col, logged=None, undo_info=None):
         """
