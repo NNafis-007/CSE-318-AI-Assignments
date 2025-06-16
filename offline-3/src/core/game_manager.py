@@ -80,6 +80,12 @@ class Game:
                 should_quit = self.state_manager.handle_key_press(event.key)
                 if should_quit:
                     self.running = False
+            elif event.type == pygame.USEREVENT + 1:
+                # Handle AI turn timer event
+                if (self.state_manager.current_state == GameState.GAME and 
+                    self.state_manager.game_screen):
+                    self.state_manager.game_screen._process_ai_turn()
+                    pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Cancel timer
     
     def update(self):
         """Update game logic"""

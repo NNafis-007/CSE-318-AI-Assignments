@@ -1,4 +1,5 @@
 import pygame
+import os
 from typing import Optional, Tuple, List
 from src.core.interfaces import EventHandler
 from src.ui.ui_renderer import UIRenderer
@@ -26,7 +27,11 @@ class GameBoard:
         
         # Add animation manager
         self.animation_manager = AnimationManager()
-    
+        
+        # File-based game state
+        self.game_state_file = "gamestate.txt"
+        self.last_move_player = None  # Track who made the last move
+
     def is_valid_position(self, row: int, col: int) -> bool:
         """Check if the given position is valid"""
         return 0 <= row < self.rows and 0 <= col < self.cols
@@ -85,6 +90,9 @@ class GameBoard:
         # Switch to next player if game continues
         if not self.game_over:
             self._switch_player()
+        
+        # Update game state file after the move
+        self.update_game_state_file(self.current_player)
         
         return True
     
@@ -231,6 +239,93 @@ class GameBoard:
         
         return None
 
+    def save_game_state_to_file(self):
+        """Save current game state to gamestate.txt file"""
+        try:
+            with open(self.game_state_file, 'w') as f:
+                # Header line: Who made the current move
+                if self.last_move_player == 1:
+                    f.write("Human Move:\n")
+                elif self.last_move_player == 2:
+                    f.write("AI Move:\n")
+                else:
+                    f.write("Game Start:\n")
+                
+                # Board state: 9 rows of 6 cells each
+                for row in range(self.rows):
+                    row_data = []
+                    for col in range(self.cols):
+                        cell = self.board[row][col]
+                        if cell.is_empty():
+                            row_data.append("0")
+                        else:
+                            # Format: <n><C> where n is orb count, C is R(Red)/B(Blue)
+                            color = "R" if cell.player == 1 else "B"
+                            row_data.append(f"{cell.orb_count}{color}")
+                    f.write(" ".join(row_data) + "\n")
+            print(f"Game state saved to {self.game_state_file}")
+        except Exception as e:
+            print(f"Error saving game state: {e}")
+
+    def update_game_state_file(self, player_moved: int):
+        """Update the game state file after a player's move"""
+        self.last_move_player = player_moved
+        self.save_game_state_to_file()
+
+    def get_board_copy_for_ai(self):
+        """
+        Create a Board copy compatible with the AI system.
+        This converts the GameBoard to the AI-compatible Board format.
+        """
+        import Board
+        
+        ai_board = Board.Board()
+        
+        # Copy the current state to AI board format
+        for i in range(self.rows):
+            for j in range(self.cols):
+                cell = self.board[i][j]
+                ai_board.grid[i][j].player = cell.player
+                ai_board.grid[i][j].orb_count = cell.orb_count
+        
+        return ai_board
+    
+    def apply_ai_move_to_board(self, ai_board):
+        """
+        Apply the AI board state back to the GameBoard.
+        This syncs changes from AI board back to the main game board.
+        """
+        for i in range(self.rows):
+            for j in range(self.cols):
+                ai_cell = ai_board.grid[i][j]
+                self.board[i][j].player = ai_cell.player
+                self.board[i][j].orb_count = ai_cell.orb_count
+
+    def make_ai_move(self, ai_player_instance):
+        """
+        Make an AI move using the minimax algorithm.
+        
+        Args:
+            ai_player_instance: An AIPlayer instance
+            
+        Returns:
+            tuple: (row, col) of the move made, or None if no move possible
+        """
+        # Get AI board representation
+        ai_board = self.get_board_copy_for_ai()
+        
+        # Get best move from AI
+        best_move = ai_player_instance.get_best_move(ai_board)
+        
+        if best_move:
+            row, col = best_move
+            # Make the move on the actual game board
+            success = self.place_orb(row, col)
+            if success:
+                print(f"AI (Player {self.current_player}) played at ({row}, {col})")
+                return best_move
+        
+        return None
 class GameScreen(EventHandler):
     """Handles the game screen with Chain Reaction logic"""
     def __init__(self, ui_renderer: UIRenderer, game_mode: GameMode):
@@ -239,6 +334,15 @@ class GameScreen(EventHandler):
         self.board = GameBoard()
         self.selected_cell = None  # Track selected cell for info display
         self.is_processing_turn = False  # Prevent input during animations
+        
+        # AI-related attributes
+        self.ai_player = None
+        self.human_player = 1  # Default: Human is player 1
+        self.ai_difficulty = 3  # Default difficulty
+        self.ai_heuristic = 'basic'  # Default heuristic
+          # Initialize AI for Human vs AI mode
+        if self.game_mode == GameMode.HUMAN_VS_AI:
+            self._setup_ai_mode()
 
     def handle_mouse_click(self, pos: tuple[int, int]) -> Optional[str]:
         """Handle mouse clicks on the game board"""
@@ -281,7 +385,42 @@ class GameScreen(EventHandler):
                     print(f"🎮 Game is over! Player {self.board.winner} has won!")
                 
         elif self.game_mode == GameMode.HUMAN_VS_AI:
-            print("Huamn vs AI mode not implemented yet!")
+            # Handle Human vs AI mode
+            if self._is_ai_turn():
+                print("It's AI's turn. Please wait...")
+                return None
+            
+            # Human player's turn
+            cell = self.board.get_cell_from_mouse_pos(pos)
+            if cell:
+                self.selected_cell = cell
+                
+                print("\n" + "="*50)
+                print(f"🎮 HUMAN vs AI MODE - Your turn (Player {self.human_player})")
+                
+                if not self.board.game_over:
+                    if self.board.place_orb(cell.row, cell.col):
+                        # Set processing flag
+                        self.is_processing_turn = True
+                        
+                        # Print game state after human move
+                        state = self.board.get_game_state()
+                        print(f"You played at ({cell.row}, {cell.col})")
+                        print(f"Total Moves: {state['total_moves']}")
+                        print(f"Player 1 Cells: {state['player1_cells']}")
+                        print(f"Player 2 Cells: {state['player2_cells']}")
+                        
+                        if state['game_over']:
+                            print(f"🎉 GAME OVER! Player {state['winner']} wins!")
+                        else:
+                            # Schedule AI turn after a brief delay
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 500)  # 500ms delay
+                        
+                        print("="*50)
+                    else:
+                        print(f"❌ Invalid move at ({cell.row}, {cell.col})")
+                else:
+                    print(f"🎮 Game is over! Player {self.board.winner} has won!")
 
         elif self.game_mode == GameMode.AI_VS_AI:
             print("AI vs AI mode not implemented yet!")
@@ -453,3 +592,67 @@ class GameScreen(EventHandler):
         
         for i, line in enumerate(info_lines):
             self.ui_renderer.draw_text(surface, line, info_x, info_y + i * 18, "small", BLACK, False)
+    
+    def _setup_ai_mode(self):
+        """Setup AI player for Human vs AI mode"""
+        try:
+            import sys
+            import os
+            
+            # Add root directory to path to import our AI modules
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            if root_dir not in sys.path:
+                sys.path.insert(0, root_dir)
+            
+            from src.core.ai_player import AIPlayer
+            import colors
+            
+            # Ask user for preferences (simplified for now)
+            print("\n=== Human vs AI Setup ===")
+            print("You are Player 1 (Red), AI is Player 2 (Blue)")
+            
+            self.human_player = 1  # Human is always player 1 (Red)
+            ai_color = colors.BLUE  # AI is player 2 (Blue)
+            
+            # Create AI player
+            self.ai_player = AIPlayer(
+                color=ai_color,
+                difficulty=self.ai_difficulty,
+                heuristic_name=self.ai_heuristic
+            )
+            
+            print(f"AI initialized with difficulty {self.ai_difficulty} and '{self.ai_heuristic}' heuristic")
+            print("Click on the board to make your move!")
+            
+        except ImportError as e:
+            print(f"Error setting up AI: {e}")
+            print("AI modules not found. Please check your installation.")
+            self.ai_player = None
+    
+    def _is_ai_turn(self):
+        """Check if it's the AI's turn"""
+        return (self.game_mode == GameMode.HUMAN_VS_AI and 
+                self.ai_player is not None and 
+                self.board.current_player != self.human_player)
+    
+    def _process_ai_turn(self):
+        """Process the AI's turn"""
+        if self._is_ai_turn() and not self.board.game_over:
+            print(f"\nAI (Player {self.board.current_player}) is thinking...")
+            
+            # Make AI move
+            ai_move = self.board.make_ai_move(self.ai_player)
+            
+            if ai_move:
+                # Show game state after AI move
+                state = self.board.get_game_state()
+                print(f"AI moved to {ai_move}")
+                print(f"Current game state: Player {state['current_player']}'s turn")
+                
+                if state['game_over']:
+                    print(f"🎉 GAME OVER! Player {state['winner']} wins!")
+            else:
+                print("AI couldn't make a move!")
+            
+            # Reset processing flag
+            self.is_processing_turn = False
