@@ -1,6 +1,6 @@
 
-GRID_ROWS = 3 # ← Change this for different number of rows
-GRID_COLS = 3  # ← Change this for different number of columns
+GRID_ROWS = 9 # ← Change this for different number of rows
+GRID_COLS = 6  # ← Change this for different number of columns
 
 # ======================================================
 
@@ -27,7 +27,7 @@ GRID_HEIGHT = GRID_ROWS * CELL_SIZE
 # Window size adapts to grid
 MIN_WINDOW_WIDTH = 800
 MIN_WINDOW_HEIGHT = 700
-WINDOW_WIDTH = max(GRID_WIDTH + 200, MIN_WINDOW_WIDTH)  # Extra space for UI
+WINDOW_WIDTH = max(GRID_WIDTH + 300, MIN_WINDOW_WIDTH)  # Extra space for UI
 WINDOW_HEIGHT = max(GRID_HEIGHT + 150, MIN_WINDOW_HEIGHT)  # Extra space for UI
 
 GRID_X = (WINDOW_WIDTH - GRID_WIDTH) // 2

@@ -502,8 +502,8 @@ class GameScreen(EventHandler):
         self.board.animation_manager.draw(surface)
         
         # Draw selected cell info on screen
-        if self.selected_cell:
-            self._draw_selected_cell_info(surface)
+        # if self.selected_cell:
+        #     self._draw_selected_cell_info(surface)
         
         # Show animation status
         if self.is_processing_turn:
