@@ -49,11 +49,13 @@ class ChainReactionGUI:
         self.blue_ai_type = None
         self.red_heuristic = None
         self.blue_heuristic = None
-        
-        # GUI settings
+          # GUI settings
         self.cell_size = 80
         self.margin = 10
         self.top_margin = 150
+        self.bottom_margin = 200
+        self.min_screen_width = 600
+        self.min_screen_height = 600
         self.font = pygame.font.Font(None, 36)
         self.title_font = pygame.font.Font(None, 48)
         self.small_font = pygame.font.Font(None, 24)
@@ -71,7 +73,6 @@ class ChainReactionGUI:
             ("Tempo", ChainReactionHeuristics.tempo_heuristic),
             ("Combined Strategy", ChainReactionHeuristics.strat_eval_expl_potential_combined_heuristic)
         ]
-    
     def reset_game_state(self):
         """Reset all game configuration"""
         self.game = None
@@ -85,11 +86,25 @@ class ChainReactionGUI:
         self.blue_heuristic = None
         self.menu_state = "main"
         self.in_menu = True
+        
+        # Reset cell size and font to defaults
+        self.cell_size = 80
+        self.font = pygame.font.Font(None, 36)
     
     def initialize_game(self):
         """Initialize the game with current configuration"""
         self.game = ChainReactionGame(self.selected_rows, self.selected_cols)
         self.game_mode = self.selected_mode
+        
+        # Calculate optimal cell size for the selected grid
+        _, _, optimal_cell_size = self.calculate_screen_dimensions()
+        self.cell_size = optimal_cell_size
+        
+        # Adjust font sizes based on cell size for better readability
+        if self.cell_size < 60:
+            self.font = pygame.font.Font(None, max(24, int(self.cell_size * 0.4)))
+        else:
+            self.font = pygame.font.Font(None, 36)
         
         # Set up AI players based on configuration
         if self.red_ai_type == AIType.SMART:
@@ -117,11 +132,11 @@ class ChainReactionGUI:
         if self.game:
             move_type = "Game State"
             if self.game_mode == GameMode.USER_VS_USER:
-                move_type = f"{self.game.current_player.value} Move"
+                move_type = f"{self.game.current_player.value}"
             elif self.game_mode == GameMode.USER_VS_AI:
-                move_type = "Human Move" if self.game.current_player == Player.RED else "AI Move"
+                move_type = "Human" if self.game.current_player == Player.RED else "AI"
             elif self.game_mode == GameMode.AI_VS_AI:
-                move_type = f"AI {self.game.current_player.value} Move"
+                move_type = f"AI {self.game.current_player.value}"
             
             self.game.save_to_file(self.gamestate_file, move_type, self.game_mode)
     
@@ -245,9 +260,9 @@ class ChainReactionGUI:
         
         # Grid size options
         grid_options = [
-            "1. 3x3 Grid (Beginner)",
-            "2. 4x4 Grid (Intermediate)",
-            "3. 5x5 Grid (Advanced)",
+            "1. 3x3 Grid (Quick)",
+            "2. 6x4 Grid (Casual)",
+            "3. 9x6 Grid (Marathon)",
             "4. Back to Main Menu"
         ]
         
@@ -394,13 +409,13 @@ class ChainReactionGUI:
                     self.selected_rows = 3
                     self.selected_cols = 3
                     self.proceed_after_grid_selection()
-                elif i == 1:  # 4x4
-                    self.selected_rows = 4
+                elif i == 1:  # 6x4
+                    self.selected_rows = 6
                     self.selected_cols = 4
                     self.proceed_after_grid_selection()
-                elif i == 2:  # 5x5
-                    self.selected_rows = 5
-                    self.selected_cols = 5
+                elif i == 2:  # 9x6
+                    self.selected_rows = 9
+                    self.selected_cols = 6
                     self.proceed_after_grid_selection()
                 elif i == 3:  # Back
                     self.menu_state = "main"
@@ -637,14 +652,62 @@ class ChainReactionGUI:
             if self.game.is_valid_move(row, col, current_player):
                 self.make_move(row, col)
     
+    def calculate_screen_dimensions(self):
+        """Calculate optimal screen dimensions and cell size based on grid size"""
+        if not hasattr(self, 'selected_rows') or not hasattr(self, 'selected_cols'):
+            return 700, 800, 80
+        
+        # Calculate required board dimensions
+        max_cell_size = 80
+        min_cell_size = 40
+        
+        # Try with maximum cell size first
+        cell_size = max_cell_size
+        board_width = self.selected_cols * cell_size + (self.selected_cols - 1) * self.margin
+        board_height = self.selected_rows * cell_size + (self.selected_rows - 1) * self.margin
+        
+        # Calculate required screen dimensions
+        screen_width = max(board_width + 100, self.min_screen_width)  # Add padding
+        screen_height = board_height + self.top_margin + self.bottom_margin
+        
+        # If screen would be too large, reduce cell size
+        max_screen_width = 1200
+        max_screen_height = 900
+        
+        if screen_width > max_screen_width or screen_height > max_screen_height:
+            # Calculate maximum possible cell size that fits in screen
+            max_width_cell_size = (max_screen_width - 100 - (self.selected_cols - 1) * self.margin) // self.selected_cols
+            max_height_cell_size = (max_screen_height - self.top_margin - self.bottom_margin - (self.selected_rows - 1) * self.margin) // self.selected_rows
+            
+            cell_size = max(min(max_width_cell_size, max_height_cell_size, max_cell_size), min_cell_size)
+              # Recalculate dimensions with new cell size
+            board_width = self.selected_cols * cell_size + (self.selected_cols - 1) * self.margin
+            board_height = self.selected_rows * cell_size + (self.selected_rows - 1) * self.margin
+            screen_width = max(board_width + 100, self.min_screen_width)
+            screen_height = board_height + self.top_margin + self.bottom_margin
+        
+        return screen_width, screen_height, cell_size
+    
     def run(self):
         """Main game loop"""
         screen = pygame.display.set_mode((700, 800))
         pygame.display.set_caption("Chain Reaction")
         clock = pygame.time.Clock()
+        current_screen_size = (700, 800)
         
         running = True
         while running:
+            # Check if we need to resize screen when starting a game
+            if not self.in_menu and self.game:
+                required_width, required_height, _ = self.calculate_screen_dimensions()
+                if current_screen_size != (required_width, required_height):
+                    screen = pygame.display.set_mode((required_width, required_height))
+                    current_screen_size = (required_width, required_height)
+            elif self.in_menu and current_screen_size != (700, 800):
+                # Reset to default size for menu
+                screen = pygame.display.set_mode((700, 800))
+                current_screen_size = (700, 800)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
