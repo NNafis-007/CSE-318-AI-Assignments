@@ -1,5 +1,4 @@
-Human Move:
-1R 1R 0
-2R 1R 1R
-1R 0 2R
-
+Game Over Move:
+2R 0 3R 0
+0 3R 1R 2R
+1R 3R 0 2R

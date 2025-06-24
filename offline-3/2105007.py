@@ -366,70 +366,47 @@ class ChainReactionHeuristics:
         return score
 
     @staticmethod
-    def strategic_control_heuristic(game: ChainReactionGame, player: Player) -> float:
-        """Measures control of key board regions and choke points"""
+    def strategic_eval_heuristic(game: ChainReactionGame, player: Player) -> float:
+        """ Based on game state and positioning"""
         score = 0
         opponent = Player.BLUE if player == Player.RED else Player.RED
         center_row, center_col = game.rows // 2, game.cols // 2
-        
-        for row in range(game.rows):
-            for col in range(game.cols):
-                cell = game.board[row][col]
-                dist_to_center = abs(row - center_row) + abs(col - center_col)
-                
-                if cell.player == player:
-                    center_bonus = max(0, 20 - 2 * (dist_to_center ** 1.5))
-                    is_choke = False
-                    if (row == 0 and col == 1) or (row == 1 and col == 0) or \
-                       (row == 0 and col == game.cols-2) or (row == 1 and col == game.cols-1) or \
-                       (row == game.rows-2 and col == 0) or (row == game.rows-1 and col == 1) or \
-                       (row == game.rows-2 and col == game.cols-1) or (row == game.rows-1 and col == game.cols-2):
-                        is_choke = True
+
+        for i in range(game.rows):
+            for j in range(game.cols):
+                cell = game.board[i][j]
+
+                if cell.player == player and cell.orbs > 0:
+                    score += cell.orbs
+                    critical_opponent_neighbors = []
+                    for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                        nr, nc = i + dr, j + dc
+                        if 0 <= nr < game.rows and 0 <= nc < game.cols:
+                            nei_cell = game.board[nr][nc]
+                            if (nei_cell.player == opponent and 
+                                nei_cell.orbs == game.get_critical_mass(nr, nc) - 1):
+                                critical_opponent_neighbors.append((nr, nc))
                     
-                    score += center_bonus + (30 if is_choke else 0)
-                
-                elif cell.player == opponent:
-                    score -= max(0, 15 - 2 * (dist_to_center ** 1.5))
+                    # If there's nearby explodable opponent cells, increase score
+                    if critical_opponent_neighbors:
+                        for nr, nc in critical_opponent_neighbors:
+                            opp_critical_mass = game.get_critical_mass(nr, nc)
+                            score -= (50 - 10*opp_critical_mass)
+                    else:
+                        # If no critical opponent neighbors, add positional bonuses
+
+                        # for corners
+                        if (i == 0 or i == game.rows-1) and (j == 0 or j == game.cols-1):
+                            score += 30
+                        # for edges
+                        elif i == 0 or i == game.rows-1 or j == 0 or j == game.cols-1:
+                            score += 20
+                        
+                        # for explodable cells
+                        if cell.orbs >= game.get_critical_mass(i, j) - 1:
+                            score += 20
         return score
 
-    @staticmethod
-    def growth_potential_heuristic(game: ChainReactionGame, player: Player) -> float:
-        """Evaluates safe expansion opportunities"""
-        score = 0
-        opponent = Player.BLUE if player == Player.RED else Player.RED
-        frontier_cells = set()
-        
-        for row in range(game.rows):
-            for col in range(game.cols):
-                if game.board[row][col].player == player:
-                    for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-                        nr, nc = row + dr, col + dc
-                        if 0 <= nr < game.rows and 0 <= nc < game.cols:
-                            if game.board[nr][nc].player == Player.EMPTY:
-                                frontier_cells.add((nr, nc))
-        
-        for row, col in frontier_cells:
-            safety_score = 0
-            strategic_value = 0
-            
-            for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
-                nr, nc = row + dr, col + dc
-                if 0 <= nr < game.rows and 0 <= nc < game.cols:
-                    neighbor = game.board[nr][nc]
-                    if neighbor.player == opponent:
-                        critical = game.get_critical_mass(nr, nc)
-                        safety_score -= (neighbor.orbs / critical) * 40
-            
-            if (row == 0 or row == game.rows-1) and (col == 0 or col == game.cols-1):
-                strategic_value = 25  # Corner
-            elif row == 0 or row == game.rows-1 or col == 0 or col == game.cols-1:
-                strategic_value = 15  # Edge
-            else:
-                strategic_value = 5   # Center
-            
-            score += max(0, strategic_value + safety_score)
-        
-        return score
 
     @staticmethod
     def threat_analysis_heuristic(game: ChainReactionGame, player: Player) -> float:
@@ -459,7 +436,7 @@ class ChainReactionHeuristics:
                         score -= 50 if not can_block else 25
                     
                     # Potential threats (could explode soon)
-                    elif cell.orbs >= critical * 0.7:
+                    elif cell.orbs >= critical - 2:
                         potential_threats += 1
                         score -= 20 * (cell.orbs / critical)
                 
@@ -476,7 +453,7 @@ class ChainReactionHeuristics:
                         score += min(30, defensive_strength * 2)
         
         #Global threat assessment
-        threat_ratio = (immediate_threats * 3 + potential_threats) / max(1, game.rows * game.cols)
+        threat_ratio = (immediate_threats * 2 + potential_threats) / max(1, game.rows * game.cols)
         score -= 100 * threat_ratio
         
         return score
@@ -495,6 +472,7 @@ class ChainReactionHeuristics:
                 cell = game.board[row][col]
                 critical = game.get_critical_mass(row, col)
                 
+                # forcing moves are those that make a cell explodable
                 if cell.player == player and cell.orbs == critical - 2:
                     player_forcing_moves += 1
                 elif cell.player == opponent and cell.orbs == critical - 2:
@@ -507,53 +485,13 @@ class ChainReactionHeuristics:
         
         #calculate tempo score
         score += (player_forcing_moves - opponent_forcing_moves) * 40
-        score += math.log(development_ratio) * 30 if development_ratio > 0 else 0
-        
-        #Late-game adjustment
-        total_orbs = player_development + opponent_development
-        if total_orbs > (game.rows * game.cols * 2):
-            #In endgame, prioritize orb count and explosion potential
-            score += ChainReactionHeuristics.orb_count_heuristic(game, player) * 0.5
-            score += ChainReactionHeuristics.explosion_potential_heuristic(game, player) * 0.3
-        
         return score
 
     @staticmethod
-    def combined_heuristic_v2(game: ChainReactionGame, player: Player) -> float:
-        """Sophisticated combination of all heuristics with dynamic weights"""
-        #Early game weights
-        if game.move_count < 10:
-            weights = {
-                'strategic_control': 0.4,
-                'growth_potential': 0.3,
-                'tempo': 0.2,
-                'threat': 0.1
-            }
-        #Mid game weights
-        elif game.move_count < 30:
-            weights = {
-                'explosion': 0.3,
-                'threat': 0.3,
-                'strategic_control': 0.2,
-                'tempo': 0.2
-            }
-        #End game weights
-        else:
-            weights = {
-                'explosion': 0.5,
-                'threat': 0.3,
-                'orb_count': 0.2
-            }
-        
-        #weighted sum
-        score = 0
-        score += weights.get('explosion', 0) * ChainReactionHeuristics.explosion_potential_heuristic(game, player)
-        score += weights.get('strategic_control', 0) * ChainReactionHeuristics.strategic_control_heuristic(game, player)
-        score += weights.get('growth_potential', 0) * ChainReactionHeuristics.growth_potential_heuristic(game, player)
-        score += weights.get('threat', 0) * ChainReactionHeuristics.threat_analysis_heuristic(game, player)
-        score += weights.get('tempo', 0) * ChainReactionHeuristics.tempo_heuristic(game, player)
-        score += weights.get('orb_count', 0) * ChainReactionHeuristics.orb_count_heuristic(game, player)
-        
+    def strat_eval_expl_potential_combined_heuristic(game: ChainReactionGame, player: Player) -> float:
+        """Combined heuristic using strategic evaluation and explosion potential"""
+        score = 2*ChainReactionHeuristics.strategic_eval_heuristic(game, player)
+        score += ChainReactionHeuristics.explosion_potential_heuristic(game, player)
         return score
 
 class MinimaxAI:
@@ -597,7 +535,7 @@ class MinimaxAI:
         #base cases: 
         if depth == 0 or game.game_over:
             if game.game_over:
-                score = 1000 if game.winner == self.player else (-1000 if game.winner is not None else 0)
+                score = 1e9 if game.winner == self.player else (-1e9 if game.winner is not None else 0)
             else:
                 score = self.heuristic_func(game, self.player)
             self.transposition_table[state_key] = (score, depth, None)
@@ -609,14 +547,12 @@ class MinimaxAI:
         if not valid_moves:
             # If current player has no moves, they lose (all cell occupied)
             if current_player == self.player:
-                score = -1000  
+                score = -1e9  
             else:
-                score = 1000   
+                score = 1e9   
             self.transposition_table[state_key] = (score, depth, None)
             return score, None
         
-        # Ordering moves for better pruning
-        valid_moves = self.order_moves(game, valid_moves)
         best_move = None
         moves_evaluated = 0
         
@@ -683,25 +619,14 @@ class MinimaxAI:
         
         total_orbs = sum(cell.orbs for row in game.board for cell in row if cell.player != Player.EMPTY)
         valid_moves_count = len(game.get_valid_moves(self.player))
-        print(f"🎯 AI searching at depth {self.depth} for {total_orbs} orbs, {valid_moves_count} valid moves")
+        print(f" --- AI searching at depth {self.depth} for {total_orbs} orbs, {valid_moves_count} valid moves")
         
         _, best_move = self.minimax_search(game, self.depth)
         
         search_time = time.time() - self.search_start_time
-        print(f"⚡ Search completed in {search_time:.2f}s with {self.nodes_evaluated:,} nodes")
+        print(f" --- Search completed in {search_time:.2f}s with {self.nodes_evaluated:,} nodes")
         return best_move
     
-    def order_moves(self, game: ChainReactionGame, moves: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
-        """Order moves by proximity to critical mass for better pruning"""
-        def move_score(move):
-            row, col = move
-            cell = game.board[row][col]
-            critical = game.get_critical_mass(row, col)
-            if critical > 0:
-                return cell.orbs / critical
-            return 0
-        return sorted(moves, key=move_score, reverse=True)
-
 class RandomAI:
     """Simple AI that makes random valid moves"""
     
@@ -714,7 +639,7 @@ class RandomAI:
         if not valid_moves:
             return None
         move = random.choice(valid_moves)
-        print(f"🎲 Random AI selected move: {move[0]}, {move[1]}")
+        print(f" --- Random AI selected move: {move[0]}, {move[1]}")
         return move
 
 class GameController:
@@ -723,11 +648,11 @@ class GameController:
         self.ai_red = None
         self.ai_blue = None
         self.start_time = None
-        self.game_state_file = "arnv_gamestate.txt"  
+        self.game_state_file = "gamestate.txt"  
     
     def get_game_configuration(self) -> Tuple[int, int, int, int, 'AIType' , 'AIType' , 'GameMode' , Callable, Callable]:
         """Get game configuration from user"""
-        print("🎮 Improved Chain Reaction Game")
+        print("🎮 Chain Reaction Game")
         # print("🚀 Features: Game-over detection during explosions (no infinite loops!)")
         print("=" * 60)
        
@@ -810,31 +735,28 @@ class GameController:
             print(f"\n🧠 {player_name} Smart AI Heuristic Selection:")
             print("1 - Orb Count (Simple orb difference)")
             print("2 - Explosion Potential (Chain reaction focus)")
-            print("3 - Strategic Control (Board position control)")
-            print("4 - Growth Potential (Safe expansion)")
-            print("5 - Threat Analysis (Defensive play)")
-            print("6 - Tempo (Initiative and forcing moves)")
-            print("7 - Combined v2 (Adaptive multi-heuristic)")
+            print("3 - Strategic Evaluation (Board control and positioning)")
+            print("4 - Threat Analysis (Defensive play)")
+            print("5 - Tempo (Initiative and forcing moves)")
+            print("6 - Combined Strategy (Strategic + Explosion Potential)")
             
             while True:
                 try:
-                    choice = int(input(f"Select {player_name} AI heuristic (1-7): "))
+                    choice = int(input(f"Select {player_name} AI heuristic (1-6): "))
                     if choice == 1:
                         return ChainReactionHeuristics.orb_count_heuristic
                     elif choice == 2:
                         return ChainReactionHeuristics.explosion_potential_heuristic
                     elif choice == 3:
-                        return ChainReactionHeuristics.strategic_control_heuristic
+                        return ChainReactionHeuristics.strategic_eval_heuristic
                     elif choice == 4:
-                        return ChainReactionHeuristics.growth_potential_heuristic
-                    elif choice == 5:
                         return ChainReactionHeuristics.threat_analysis_heuristic
-                    elif choice == 6:
+                    elif choice == 5:
                         return ChainReactionHeuristics.tempo_heuristic
-                    elif choice == 7:
-                        return ChainReactionHeuristics.combined_heuristic_v2
+                    elif choice == 6:
+                        return ChainReactionHeuristics.strat_eval_expl_potential_combined_heuristic
                     else:
-                        print("Invalid choice. Please enter 1-7.")
+                        print("Invalid choice. Please enter 1-6.")
                 except ValueError:
                     print("Invalid input. Please enter a number.")
         
@@ -857,7 +779,7 @@ class GameController:
             else:
                 blue_heuristic = None
         else:  
-            print("\n🤖AI vs AI Configuration:")
+            print("\n🤖 AI vs AI Configuration:")
             red_ai_type = get_ai_type("Red")
             blue_ai_type = get_ai_type("Blue")
             
@@ -868,7 +790,7 @@ class GameController:
                 red_heuristic = None
                 
             if blue_ai_type == AIType.SMART:
-                depth_blue = ai_depth_menu()
+                depth_blue = ai_depth_menu("Blue")
                 blue_heuristic = get_heuristic_choice("Blue")
             else:
                 blue_heuristic = None
@@ -880,7 +802,7 @@ class GameController:
         self.game = ChainReactionGame(rows, cols)
         
         if red_ai_type == AIType.SMART:
-            heuristic = red_heuristic or ChainReactionHeuristics.growth_potential_heuristic
+            heuristic = red_heuristic or ChainReactionHeuristics.orb_count_heuristic
             self.ai_red = MinimaxAI(Player.RED, depth=depth_red, heuristic_func=heuristic)
         elif red_ai_type == AIType.RANDOM:
             self.ai_red = RandomAI(Player.RED)
@@ -895,15 +817,15 @@ class GameController:
         else:
             self.ai_blue = None
         
-        print(f"\n✅ Improved game initialized: {rows}x{cols} grid")
+        print(f"\n✅ Game initialized: {rows}x{cols} grid")
         if red_ai_type:
             print(f"🔴 Red AI: {red_ai_type.value}")
             if red_ai_type == AIType.SMART and red_heuristic:
-                print(f"  📈 Red AI Heuristic: {red_heuristic.__name__.replace('_heuristic', '').replace('_', ' ').title()}")
+                print(f"    📈 Red AI Heuristic: {red_heuristic.__name__.replace('_heuristic', '').replace('_', ' ').title()}")
         if blue_ai_type:    
             print(f"🔵 Blue AI: {blue_ai_type.value}")
             if blue_ai_type == AIType.SMART and blue_heuristic:
-                print(f"  📈 Blue AI Heuristic: {blue_heuristic.__name__.replace('_heuristic', '').replace('_', ' ').title()}")
+                print(f"    📈 Blue AI Heuristic: {blue_heuristic.__name__.replace('_heuristic', '').replace('_', ' ').title()}")
         if red_ai_type == AIType.SMART:
             print(f"🎯 Smart Red AI depth: {depth_red}")
         if blue_ai_type == AIType.SMART:
@@ -964,7 +886,7 @@ class GameController:
         else:  # AI vs AI
             self.game.save_to_file(self.game_state_file, "AI Red")
                     
-        print(f"\n🚀 Starting {mode.name.replace('_', ' ').title()} game!")
+        print(f"\n*** Starting {mode.name.replace('_', ' ').title()} game! ***")
         print("=" * 60)
         
         while True:
@@ -1012,7 +934,7 @@ class GameController:
                 if current_player == Player.RED:
                     ai_type_name = red_ai_type.value
                     if red_ai_type == AIType.SMART:
-                        heuristic = red_heuristic or ChainReactionHeuristics.growth_potential_heuristic
+                        heuristic = red_heuristic or ChainReactionHeuristics.orb_count_heuristic
                         ai_instance = MinimaxAI(Player.RED, depth_red, heuristic_func=heuristic)
                     else:
                         ai_instance = RandomAI(Player.RED)
@@ -1046,16 +968,16 @@ class GameController:
         elapsed_time = time.time() - self.start_time
         
         print("\n" + "=" * 50)
-        print("🎊 GAME OVER! 🎊")
+        print(" GAME OVER! ")
         if self.game.winner:
-            print(f"🏆 Winner: {self.game.winner.value} Player!")
+            print(f" Winner: {self.game.winner.value} Player!")
         else:
-            print("🤝 It's a draw! (ERROR)")
+            print(" It's a draw! (ERROR)")
         
         scores = self.game.get_score()
-        print(f"📊 Final Scores - Red: {scores[Player.RED]}, Blue: {scores[Player.BLUE]}")
-        print(f"⏱️  Game duration: {elapsed_time:.1f} seconds")
-        print(f"📁 Game state saved to: {self.game_state_file}")
+        print(f" Final Scores - Red: {scores[Player.RED]}, Blue: {scores[Player.BLUE]}")
+        print(f"  Game duration: {elapsed_time:.1f} seconds")
+        print(f" Game state saved to: {self.game_state_file}")
         print("=" * 50)
 
 if __name__ == "__main__":
