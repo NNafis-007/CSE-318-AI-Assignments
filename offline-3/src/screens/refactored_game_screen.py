@@ -186,7 +186,7 @@ class RefactoredGameScreen(EventHandler):
                 # Add moving orb animations
                 for neighbor_pos in explosion['affected_neighbors']:
                     self.animation_manager.add_moving_orb(
-                        explosion['position'], neighbor_pos,                        move_result['game_state']['current_player'], duration=0.3
+                        explosion['position'], neighbor_pos, move_result['game_state']['current_player'], duration=0.3
                     )
     
     def _print_move_result(self, result: dict):

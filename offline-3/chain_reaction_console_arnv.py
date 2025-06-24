@@ -1,8 +1,12 @@
+from itertools import chain
+from shutil import move
 from typing import Callable, List, Tuple, Dict, Optional
 from enum import Enum
 import time
 import math
 import random
+
+from src.core import cell
 
 class Player(Enum):
     EMPTY = "Empty"
@@ -42,7 +46,7 @@ class ChainReactionGame:
         self.game_over = False
         self.winner = None
         self.move_count = 0
-        self._initialize_critical_mass_cache() # --- Move to cell class
+        self._initialize_critical_mass_cache() 
     
     def _initialize_critical_mass_cache(self):
         """Pre-calculate critical mass for each position"""
@@ -86,50 +90,23 @@ class ChainReactionGame:
         self.board[row][col].player = player
         self.move_count += 1
         
-        self._handle_explosions()
+        self._handle_explosions(row, col)
         self._check_win_condition()
         #switch player if game is not over
         if not self.game_over:
             self.current_player = Player.BLUE if self.current_player == Player.RED else Player.RED
         return True
     
-    def _handle_explosions(self):
-        """Handle chain explosions with game-over checking to prevent infinite loops"""
-        explosion_occurred = True
-        iteration_count = 0
-        max_iterations = 1000000  # Safety limit
+    def _handle_explosions(self, row: int, col: int):
+        """Handle chain explosions with game-over checking to prevent infinite loops"""        
+        if self._is_game_over():
+            return
+        cell = self.board[row][col]
+        if cell.orbs >= self.get_critical_mass(row, col):
+            self._explode_cell(row, col)
         
-        while explosion_occurred and iteration_count < max_iterations:
-            explosion_occurred = False
-            iteration_count += 1
-            
-            #all cells that need to explode
-            exploding_cells = []
-            for row in range(self.rows):
-                for col in range(self.cols):
-                    cell = self.board[row][col]
-                    critical_mass = self.get_critical_mass(row, col)
-                    if cell.orbs >= critical_mass and cell.player != Player.EMPTY:
-                        exploding_cells.append((row, col))
-            
-            if exploding_cells:
-                explosion_occurred = True  
-                
-                # Process explosions with small delay for visual effect
-                # print(f"💥 Processing {len(exploding_cells)} explosions...")
-                
-                if hasattr(self, 'interactive_mode') and self.interactive_mode:
-                    time.sleep(0.1)  #Very small delay for explosion visualization
-                
-                for row, col in exploding_cells:
-                    self._explode_cell(row, col)
-                if self._is_game_over_during_explosions():
-                    break
-        
-        if iteration_count >= max_iterations:
-            print(f"⚠️  Explosion loop terminated after {max_iterations} iterations for safety")
-    
-    def _is_game_over_during_explosions(self) -> bool:
+
+    def _is_game_over(self) -> bool:
         """Check if game is over during explosion processing"""
         red_orbs = 0
         blue_orbs = 0
@@ -149,23 +126,52 @@ class ChainReactionGame:
         return False
     
     def _explode_cell(self, row: int, col: int):
-        """Explode a single cell"""
-        cell = self.board[row][col]
-        exploding_player = cell.player
-        critical_mass = self.get_critical_mass(row, col)
-        orbs_to_distribute = critical_mass
-        cell.orbs -= orbs_to_distribute
-        if cell.orbs <= 0:
-            cell.orbs = 0
-            cell.player = Player.EMPTY
+        explosion_queue :List[Tuple[int,int]] = []
+        explosion_queue.append((row, col))
+        chain_len = 0
+
+        while len(explosion_queue) > 0:
+            if self._is_game_over():
+                break
+            chain_len += 1
+            current_row, current_col = explosion_queue.pop(0)
+            cell = self.board[current_row][current_col]
+            critical_mass = self.get_critical_mass(row, col)
+            exploding_player = cell.player
+
+            if cell.orbs >= critical_mass:
+                # Reset cell due to explosion
+                cell.orbs = 0
+                cell.player = Player.EMPTY
+                
+                neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+                for dr, dc in neighbors:
+                    nr, nc = current_row + dr, current_col + dc
+                    if 0 <= nr < self.rows and 0 <= nc < self.cols:
+                        neighbor_cell = self.board[nr][nc]
+                        neighbor_cell.orbs += 1
+                        neighbor_cell.player = exploding_player
+                        if neighbor_cell.orbs >= self.get_critical_mass(nr, nc):
+                            explosion_queue.append((nr, nc))
+
+
+        # """Explode a single cell"""
+        # cell = self.board[row][col]
+        # exploding_player = cell.player
+        # critical_mass = self.get_critical_mass(row, col)
+        # orbs_to_distribute = critical_mass
+        # cell.orbs -= orbs_to_distribute
+        # if cell.orbs <= 0:
+        #     cell.orbs = 0
+        #     cell.player = Player.EMPTY
     
-        neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        for dr, dc in neighbors:
-            nr, nc = row + dr, col + dc
-            if 0 <= nr < self.rows and 0 <= nc < self.cols:
-                neighbor_cell = self.board[nr][nc]
-                neighbor_cell.orbs += 1
-                neighbor_cell.player = exploding_player
+        # neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        # for dr, dc in neighbors:
+        #     nr, nc = row + dr, col + dc
+        #     if 0 <= nr < self.rows and 0 <= nc < self.cols:
+        #         neighbor_cell = self.board[nr][nc]
+        #         neighbor_cell.orbs += 1
+        #         neighbor_cell.player = exploding_player
     
     def _check_win_condition(self):
         """Check if game is over and determine winner"""
@@ -225,35 +231,31 @@ class ChainReactionGame:
         
         return new_game
     
-    def to_file_format(self, move_type: str) -> str:
-        """Convert board to file format with game state metadata"""
-        lines = [f"{move_type}:"]
-        if self.move_count == 0:
-            #Game just started - no one has moved yet, Red goes first
-            last_player = Player.BLUE
-        else:
-            #Someone has moved - the last player is the opposite of current player
-            last_player = Player.BLUE if self.current_player == Player.RED else Player.RED
-        
-        lines.append(f"LastPlayer: {last_player.value}")
-        lines.append(f"MoveCount: {self.move_count}")
-        lines.append(f"GameOver: {self.game_over}")
-        if self.winner:
-            lines.append(f"Winner: {self.winner.value}")
-        lines.append("Board:")
+    def to_file_format(self, move_type: str, mode : GameMode = GameMode.USER_VS_AI) -> str:
+        """Convert board to file format with numerical representation"""
+            
+        lines = [f"{move_type} Move:"]        
         for row in range(self.rows):
-            line = ' '.join(str(self.board[row][col]) for col in range(self.cols))
-            lines.append(line)
+            row_cells = []
+            for col in range(self.cols):
+                cell = self.board[row][col]
+                if cell.player == Player.EMPTY:
+                    row_cells.append("0")
+                elif cell.player == Player.RED:
+                    row_cells.append(f"{cell.orbs}R")
+                elif cell.player == Player.BLUE:
+                    row_cells.append(f"{cell.orbs}B")
+            lines.append(" ".join(row_cells))
         return '\n'.join(lines)
     
-    def save_to_file(self, filename: str, move_type: str):
+    def save_to_file(self, filename: str, move_type: str, game_mode: GameMode = GameMode.USER_VS_USER):
         """Save game state to file"""
         with open(filename, 'w', encoding='utf-8') as f:
-            f.write(self.to_file_format(move_type))
+            f.write(self.to_file_format(move_type, mode=game_mode))
     
     @classmethod
     def load_from_file(cls, filename: str) -> 'ChainReactionGame':
-        """Load game state from file with metadata"""
+        """Load game state from file with numerical format"""
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 content = f.read().strip()
@@ -261,72 +263,44 @@ class ChainReactionGame:
             lines = content.split('\n')
             if not lines:
                 raise ValueError("Empty file")
-            header = lines[0]
-            metadata = {}
-            board_start_idx = 1
             
-            for i, line in enumerate(lines[1:], 1):
-                if line.startswith("LastPlayer:"):
-                    metadata['last_player'] = line.split(": ", 1)[1]
-                elif line.startswith("MoveCount:"):
-                    metadata['move_count'] = int(line.split(": ", 1)[1])
-                elif line.startswith("GameOver:"):
-                    metadata['game_over'] = line.split(": ", 1)[1].lower() == 'true'
-                elif line.startswith("Winner:"):
-                    metadata['winner'] = line.split(": ", 1)[1]
-                elif line.startswith("Board:"):
-                    board_start_idx = i + 1
-                    break
-                elif line and not line.startswith(("LastPlayer:", "MoveCount:", "GameOver:", "Winner:", "Board:")):
-                    board_start_idx = i
-                    break
-            
-            board_lines = lines[board_start_idx:]
+            # Skip the header line (e.g., "Human Move:")
+            board_lines = lines[1:] if lines[0].endswith("Move:") else lines
             
             if not board_lines:
                 raise ValueError("No board data found")
             
+            # Determine board dimensions from the data
             first_line_cells = board_lines[0].split()
             cols = len(first_line_cells)
             rows = len(board_lines)   
-            #new game instance
+            
+            # Create new game instance
             game = cls(rows, cols)
-            #Parse board state
+            
+            # Parse board state
             for row_idx, line in enumerate(board_lines):
                 cells = line.split()
                 if len(cells) != cols:
                     raise ValueError(f"Inconsistent column count in row {row_idx}")
                 
                 for col_idx, cell_str in enumerate(cells):
-                    if cell_str == "⚫":
+                    if cell_str == "0":
                         game.board[row_idx][col_idx].orbs = 0
                         game.board[row_idx][col_idx].player = Player.EMPTY
-                    elif cell_str.startswith("🔴"):
-                        orbs = int(cell_str[1:]) if len(cell_str) > 1 else 1
+                    elif cell_str.endswith('R'):
+                        orbs = int(cell_str[:-1])
                         game.board[row_idx][col_idx].orbs = orbs
                         game.board[row_idx][col_idx].player = Player.RED
-                    elif cell_str.startswith("🔵"):
-                        orbs = int(cell_str[1:]) if len(cell_str) > 1 else 1
+                    elif cell_str.endswith('B'):
+                        orbs = int(cell_str[:-1])
                         game.board[row_idx][col_idx].orbs = orbs
                         game.board[row_idx][col_idx].player = Player.BLUE
                     else:
-                        if cell_str == "0":
-                            game.board[row_idx][col_idx].orbs = 0
-                            game.board[row_idx][col_idx].player = Player.EMPTY
-                        elif cell_str.endswith('R'):
-                            orbs = int(cell_str[:-1])
-                            game.board[row_idx][col_idx].orbs = orbs
-                            game.board[row_idx][col_idx].player = Player.RED
-                        elif cell_str.endswith('B'):
-                            orbs = int(cell_str[:-1])
-                            game.board[row_idx][col_idx].orbs = orbs
-                            game.board[row_idx][col_idx].player = Player.BLUE
-                        else:
-                            raise ValueError(f"Invalid cell format: {cell_str}")
-            if metadata:
-                game._restore_game_state_from_metadata(metadata)
-            else:
-                game._restore_game_state_from_board()
+                        raise ValueError(f"Invalid cell format: {cell_str}")
+            
+            # Restore game state from board
+            game._restore_game_state_from_board()
             
             return game
             
@@ -335,21 +309,8 @@ class ChainReactionGame:
         except Exception as e:
             raise ValueError(f"Error loading game state: {str(e)}")
     
-    def _restore_game_state_from_metadata(self, metadata: dict):
-        """Restore game state from metadata (preferred method)"""
-        self.move_count = metadata.get('move_count', 0)
-        #current player based on who made the last move
-        last_player_str = metadata.get('last_player')
-        if last_player_str:
-            last_player = Player.RED if last_player_str == "Red" else Player.BLUE
-            self.current_player = Player.BLUE if last_player == Player.RED else Player.RED
-        else:
-            self._restore_game_state_from_board()
-        
-        self._check_win_condition()
-    
     def _restore_game_state_from_board(self):
-        """Restore game state properties from board data (fallback method)"""
+        """Restore game state properties from board data"""
         red_orbs = 0
         blue_orbs = 0
         
@@ -362,6 +323,7 @@ class ChainReactionGame:
                     blue_orbs += cell.orbs
         
         self.move_count = red_orbs + blue_orbs
+        # Determine current player based on total moves
         self.current_player = Player.RED if self.move_count % 2 == 0 else Player.BLUE
         self._check_win_condition()
         
@@ -606,7 +568,7 @@ class MinimaxAI:
         self.transposition_table = {}
         self.max_nodes = 750000  # Conservative node limit
         self.search_start_time = 0
-        self.max_search_time = 25.0  # Conservative time limit
+        self.max_search_time = 10.0  # Conservative time limit
 
     def get_game_state_key(self, game: ChainReactionGame) -> tuple:
         """Generate a hashable key for the game state"""
@@ -645,7 +607,7 @@ class MinimaxAI:
         valid_moves = game.get_valid_moves(current_player)
         
         if not valid_moves:
-            # If current player has no moves, they lose
+            # If current player has no moves, they lose (all cell occupied)
             if current_player == self.player:
                 score = -1000  
             else:
@@ -658,6 +620,7 @@ class MinimaxAI:
         best_move = None
         moves_evaluated = 0
         
+        # For Max agent
         if maximizing:
             max_eval = float('-inf')
             for move in valid_moves:
@@ -683,7 +646,8 @@ class MinimaxAI:
                     
             self.transposition_table[state_key] = (max_eval, depth, best_move)
             return max_eval, best_move
-        else:
+        # For Min agent 
+        else: 
             min_eval = float('inf')
             for move in valid_moves:
                 if (time.time() - self.search_start_time > self.max_search_time or 
@@ -724,9 +688,7 @@ class MinimaxAI:
         _, best_move = self.minimax_search(game, self.depth)
         
         search_time = time.time() - self.search_start_time
-        pruning_rate = (self.nodes_pruned / max(self.total_moves_considered, 1)) * 100 if self.total_moves_considered > 0 else 0
-        cache_hit_rate = (self.cache_hits / max(self.nodes_evaluated, 1)) * 100 if self.nodes_evaluated > 0 else 0
-        print(f"⚡ Search completed in {search_time:.2f}s with {self.nodes_evaluated:,} nodes, {self.nodes_pruned:,} pruned ({pruning_rate:.1f}% efficiency), {self.cache_hits:,} hits ({cache_hit_rate:.1f}% hit rate)")
+        print(f"⚡ Search completed in {search_time:.2f}s with {self.nodes_evaluated:,} nodes")
         return best_move
     
     def order_moves(self, game: ChainReactionGame, moves: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
@@ -761,9 +723,9 @@ class GameController:
         self.ai_red = None
         self.ai_blue = None
         self.start_time = None
-        self.game_state_file = "improved_gamestate.txt"  
+        self.game_state_file = "arnv_gamestate.txt"  
     
-    def get_game_configuration(self) -> Tuple[int, int, int, AIType, AIType, GameMode, Optional[Callable], Optional[Callable]]:
+    def get_game_configuration(self) -> Tuple[int, int, int, int, 'AIType' , 'AIType' , 'GameMode' , Callable, Callable]:
         """Get game configuration from user"""
         print("🎮 Improved Chain Reaction Game")
         # print("🚀 Features: Game-over detection during explosions (no infinite loops!)")
@@ -794,6 +756,8 @@ class GameController:
         print("1. User vs User")
         print("2. User vs AI")
         print("3. AI vs AI")
+        depth_red = 1
+        depth_blue = 1
         
         while True:
             try:
@@ -805,20 +769,24 @@ class GameController:
             except ValueError:
                 print("Invalid input. Please enter a number.")
         
-        print("\n🤖 Smart AI Difficulty Configuration:")
-        print("2 - Easy (Fast)")
-        print("3 - Medium (Balanced)")
-        print("4 - Hard (Strategic)")
+        # Print options for depth
+        def ai_depth_menu(player_name: str = "") -> int:
+            print(f"\n🤖 Smart {player_name} AI Difficulty Configuration:")
+            print("2 - Easy (Fast)")
+            print("3 - Medium (Balanced)")
+            print("4 - Hard (Strategic)")
+            # Take depth input
+            while True:
+                try:
+                    d = int(input("Select Smart AI depth (2-4): "))
+                    if 2 <= d <= 4:
+                        break
+                    else:
+                        print("Invalid input. Please enter 2, 3, or 4.")
+                except ValueError:
+                    print("Invalid input. Please enter a number.")
+            return d
         
-        while True:
-            try:
-                depth = int(input("Select Smart AI depth (2-4): "))
-                if 2 <= depth <= 4:
-                    break
-                else:
-                    print("Invalid input. Please enter 2, 3, or 4.")
-            except ValueError:
-                print("Invalid input. Please enter a number.")
         
         def get_ai_type(player_name: str) -> AIType:
             print(f"\n{player_name} AI Type:")
@@ -871,44 +839,49 @@ class GameController:
                     print("Invalid input. Please enter a number.")
         
         if mode_choice == 1:  # User vs User
-            red_ai_type = None 
-            blue_ai_type = None
-            red_heuristic = None
-            blue_heuristic = None
+            print("\n👥 User vs User mode selected")
+            red_ai_type : Optional['AIType'] = None 
+            blue_ai_type : Optional['AIType'] = None
+            red_heuristic : Optional[Callable] = None
+            blue_heuristic : Optional[Callable] = None
         elif mode_choice == 2:  # User vs AI  
-            print("\n🤖 AI Opponent Configuration:")
-            red_ai_type = None  
+            print("\n🤖 Human vs AI mode selected:")
+            red_ai_type : Optional['AIType'] = None  
             blue_ai_type = get_ai_type("Blue")
+
             red_heuristic = None
             
             if blue_ai_type == AIType.SMART:
+                depth_blue = ai_depth_menu("Blue")
                 blue_heuristic = get_heuristic_choice("Blue")
             else:
                 blue_heuristic = None
         else:  
-            print("\n🤖 AI Configuration:")
+            print("\n🤖AI vs AI Configuration:")
             red_ai_type = get_ai_type("Red")
             blue_ai_type = get_ai_type("Blue")
             
             if red_ai_type == AIType.SMART:
+                depth_red = ai_depth_menu("Red")
                 red_heuristic = get_heuristic_choice("Red")
             else:
                 red_heuristic = None
                 
             if blue_ai_type == AIType.SMART:
+                depth_blue = ai_depth_menu()
                 blue_heuristic = get_heuristic_choice("Blue")
             else:
                 blue_heuristic = None
         
-        return rows, cols, depth, red_ai_type, blue_ai_type, GameMode(mode_choice), red_heuristic, blue_heuristic
+        return rows, cols, depth_red, depth_blue, red_ai_type, blue_ai_type, GameMode(mode_choice), red_heuristic, blue_heuristic
     
-    def initialize_game(self, rows: int, cols: int, depth: int, red_ai_type: AIType, blue_ai_type: AIType, red_heuristic=None, blue_heuristic=None):
+    def initialize_game(self, rows: int, cols: int, depth_red: int, depth_blue: int, red_ai_type: AIType, blue_ai_type: AIType, red_heuristic=None, blue_heuristic=None):
         """Initialize game with specified configuration"""
         self.game = ChainReactionGame(rows, cols)
         
         if red_ai_type == AIType.SMART:
             heuristic = red_heuristic or ChainReactionHeuristics.growth_potential_heuristic
-            self.ai_red = MinimaxAI(Player.RED, depth=depth, heuristic_func=heuristic)
+            self.ai_red = MinimaxAI(Player.RED, depth=depth_red, heuristic_func=heuristic)
         elif red_ai_type == AIType.RANDOM:
             self.ai_red = RandomAI(Player.RED)
         else:
@@ -916,7 +889,7 @@ class GameController:
             
         if blue_ai_type == AIType.SMART:
             heuristic = blue_heuristic or ChainReactionHeuristics.threat_analysis_heuristic
-            self.ai_blue = MinimaxAI(Player.BLUE, depth=depth, heuristic_func=heuristic)
+            self.ai_blue = MinimaxAI(Player.BLUE, depth=depth_blue, heuristic_func=heuristic)
         elif blue_ai_type == AIType.RANDOM:
             self.ai_blue = RandomAI(Player.BLUE)
         else:
@@ -931,8 +904,10 @@ class GameController:
             print(f"🔵 Blue AI: {blue_ai_type.value}")
             if blue_ai_type == AIType.SMART and blue_heuristic:
                 print(f"  📈 Blue AI Heuristic: {blue_heuristic.__name__.replace('_heuristic', '').replace('_', ' ').title()}")
-        if red_ai_type == AIType.SMART or blue_ai_type == AIType.SMART:
-            print(f"🎯 Smart AI depth: {depth}")
+        if red_ai_type == AIType.SMART:
+            print(f"🎯 Smart Red AI depth: {depth_red}")
+        if blue_ai_type == AIType.SMART:
+            print(f"🎯 Smart Blue AI depth: {depth_blue}")
     
     def get_game_mode(self) -> GameMode:
         """Get game mode from user"""
@@ -977,13 +952,18 @@ class GameController:
 
     def play_game(self):
         """Main game loop with file-based backend"""
-        rows, cols, depth, red_ai_type, blue_ai_type, mode, red_heuristic, blue_heuristic = self.get_game_configuration()
-        self.initialize_game(rows, cols, depth, red_ai_type, blue_ai_type, red_heuristic, blue_heuristic)
+        rows, cols, depth_red, depth_blue, red_ai_type, blue_ai_type, mode, red_heuristic, blue_heuristic = self.get_game_configuration()
+        self.initialize_game(rows, cols, depth_red, depth_blue, red_ai_type, blue_ai_type, red_heuristic, blue_heuristic)
         
         self.start_time = time.time()
         #save initial game state to file
-        self.game.save_to_file(self.game_state_file, "Game Start")
-        
+        if mode == GameMode.USER_VS_USER:
+            self.game.save_to_file(self.game_state_file, "First")
+        elif mode == GameMode.USER_VS_AI:
+            self.game.save_to_file(self.game_state_file, "Human")
+        else:  # AI vs AI
+            self.game.save_to_file(self.game_state_file, "AI Red")
+                    
         print(f"\n🚀 Starting {mode.name.replace('_', ' ').title()} game!")
         print("=" * 60)
         
@@ -1003,27 +983,27 @@ class GameController:
             if mode == GameMode.USER_VS_USER:
                 row, col = self.get_user_move(current_player)
                 self.game.make_move(row, col, current_player)
-                move_type = f"Human Move ({current_player.value})"
+                move_type = f"{current_player.value}"
                 self.game.save_to_file(self.game_state_file, move_type)
                     
             elif mode == GameMode.USER_VS_AI:
                 if current_player == Player.RED:
                     row, col = self.get_user_move(current_player)
                     self.game.make_move(row, col, current_player)
-                    self.game.save_to_file(self.game_state_file, "Human Move")
+                    self.game.save_to_file(self.game_state_file, "Human")
                 else:
                     ai_type_name = blue_ai_type.value
                     print(f"\n🤖 {ai_type_name} ({current_player.value}) is thinking...")
                     if blue_ai_type == AIType.SMART:
                         heuristic = blue_heuristic or ChainReactionHeuristics.threat_analysis_heuristic
-                        ai_instance = MinimaxAI(Player.BLUE, depth, heuristic_func=heuristic)
+                        ai_instance = MinimaxAI(Player.BLUE, depth_blue, heuristic_func=heuristic)
                     else:
                         ai_instance = RandomAI(Player.BLUE)
                     
                     move = ai_instance.get_best_move(self.game)
                     if move and self.game.make_move(move[0], move[1], current_player):
                         print(f"{ai_type_name} plays: {move[0]}, {move[1]}")
-                        self.game.save_to_file(self.game_state_file, f"{ai_type_name} Move")
+                        self.game.save_to_file(self.game_state_file, f"AI")
                     else:
                         print(f"{ai_type_name} could not find a valid move!")
                         break
@@ -1033,14 +1013,14 @@ class GameController:
                     ai_type_name = red_ai_type.value
                     if red_ai_type == AIType.SMART:
                         heuristic = red_heuristic or ChainReactionHeuristics.growth_potential_heuristic
-                        ai_instance = MinimaxAI(Player.RED, depth, heuristic_func=heuristic)
+                        ai_instance = MinimaxAI(Player.RED, depth_red, heuristic_func=heuristic)
                     else:
                         ai_instance = RandomAI(Player.RED)
                 else:
                     ai_type_name = blue_ai_type.value
                     if blue_ai_type == AIType.SMART:
                         heuristic = blue_heuristic or ChainReactionHeuristics.threat_analysis_heuristic
-                        ai_instance = MinimaxAI(Player.BLUE, depth, heuristic_func=heuristic)
+                        ai_instance = MinimaxAI(Player.BLUE, depth_blue, heuristic_func=heuristic)
                     else:
                         ai_instance = RandomAI(Player.BLUE)
                 
@@ -1049,7 +1029,7 @@ class GameController:
                 
                 if move and self.game.make_move(move[0], move[1], current_player):
                     print(f"{ai_type_name} ({current_player.value}) plays: {move[0]}, {move[1]}")
-                    ai_move_type = f"{ai_type_name} Move ({current_player.value})"
+                    ai_move_type = f"{ai_type_name} ({current_player.value})"
                     self.game.save_to_file(self.game_state_file, ai_move_type)
                 else:
                     print(f"{ai_type_name} ({current_player.value}) could not find a valid move!")
@@ -1070,7 +1050,7 @@ class GameController:
         if self.game.winner:
             print(f"🏆 Winner: {self.game.winner.value} Player!")
         else:
-            print("🤝 It's a draw!")
+            print("🤝 It's a draw! (ERROR)")
         
         scores = self.game.get_score()
         print(f"📊 Final Scores - Red: {scores[Player.RED]}, Blue: {scores[Player.BLUE]}")

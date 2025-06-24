@@ -1,0 +1,4 @@
+Game Over Move:
+0 2R 0
+1R 0 0
+0 0 0
