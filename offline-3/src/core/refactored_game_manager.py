@@ -1,3 +1,8 @@
+"""
+Refactored Game Manager with clean separation of concerns.
+Updated to work with the new UI/Logic separation.
+"""
+
 import pygame
 import sys
 from typing import Optional, Tuple
@@ -6,6 +11,7 @@ from src.ui.ui_renderer import UIRenderer
 from src.screens.menu_screen import MenuScreen
 from src.screens.refactored_game_screen import RefactoredGameScreen
 from src.config.config import *
+
 
 class GameStateManager:
     """Manages different game states and transitions"""
@@ -22,11 +28,13 @@ class GameStateManager:
         self.current_mode = game_mode
         self.current_state = GameState.GAME
         self.game_screen = RefactoredGameScreen(game_mode, ai_difficulty, ai_heuristic)
+        
     def transition_to_menu(self):
         """Transition back to menu state"""
         self.current_state = GameState.MENU
         self.current_mode = None
         self.game_screen = None
+    
     def handle_mouse_click(self, pos: tuple[int, int]):
         """Handle mouse click events based on current state"""
         if self.current_state == GameState.MENU:
@@ -55,6 +63,11 @@ class GameStateManager:
         
         return False
     
+    def update(self, dt: float):
+        """Update the current screen"""
+        if self.current_state == GameState.GAME and self.game_screen:
+            self.game_screen.update(dt)
+    
     def draw(self, surface: pygame.Surface):
         """Draw the current screen"""
         if self.current_state == GameState.MENU:
@@ -62,16 +75,18 @@ class GameStateManager:
         elif self.current_state == GameState.GAME and self.game_screen:
             self.game_screen.draw(surface)
 
+
 class Game:
     """Main game class following Single Responsibility Principle"""
     
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        pygame.display.set_caption("Chain Reaction Game")
+        pygame.display.set_caption("Chain Reaction Game - Refactored")
         self.clock = pygame.time.Clock()
         self.running = True
         self.state_manager = GameStateManager()
+    
     def handle_events(self):
         """Handle all pygame events"""
         for event in pygame.event.get():
@@ -90,16 +105,15 @@ class Game:
                 if (self.state_manager.current_state == GameState.GAME and 
                     self.state_manager.game_screen):
                     self.state_manager.game_screen._process_ai_turn()
-                    pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Cancel timerdef update(self):
+                    pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Cancel timer
+    
+    def update(self):
         """Update game logic"""
         # Get delta time for smooth animations
         dt = self.clock.get_time() / 1000.0  # Convert to seconds
         
-        # Update game screen if we're in game state
-        if (self.state_manager.current_state == GameState.GAME and 
-            self.state_manager.game_screen):
-            # Update the refactored game screen (it handles its own animations)
-            self.state_manager.game_screen.update(dt)
+        # Update the current screen
+        self.state_manager.update(dt)
     
     def draw(self):
         """Draw everything to the screen"""

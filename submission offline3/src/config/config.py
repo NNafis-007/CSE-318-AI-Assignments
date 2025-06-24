@@ -1,6 +1,6 @@
 
-GRID_ROWS = 3 # ← Change this for different number of rows
-GRID_COLS = 3  # ← Change this for different number of columns
+GRID_ROWS = 9 # ← Change this for different number of rows
+GRID_COLS = 6  # ← Change this for different number of columns
 
 # ======================================================
 

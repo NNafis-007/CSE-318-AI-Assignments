@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 from src.config.enums import GameState, GameMode, AIDifficulty, AIHeuristic
 from src.ui.ui_renderer import UIRenderer
 from src.screens.menu_screen import MenuScreen
-from src.screens.refactored_game_screen import RefactoredGameScreen
+from src.screens.game_screen import GameScreen
 from src.config.config import *
 
 class GameStateManager:
@@ -15,18 +15,19 @@ class GameStateManager:
         self.current_mode: Optional[GameMode] = None
         self.ui_renderer = UIRenderer()
         self.menu_screen = MenuScreen(self.ui_renderer)
-        self.game_screen: Optional[RefactoredGameScreen] = None
+        self.game_screen: Optional[GameScreen] = None
     
     def transition_to_game(self, game_mode: GameMode, ai_difficulty: AIDifficulty = AIDifficulty.MEDIUM, ai_heuristic: AIHeuristic = AIHeuristic.WEIGHTED_COMBINED):
         """Transition to game state with specified mode and AI settings"""
         self.current_mode = game_mode
         self.current_state = GameState.GAME
-        self.game_screen = RefactoredGameScreen(game_mode, ai_difficulty, ai_heuristic)
+        self.game_screen = GameScreen(self.ui_renderer, game_mode, ai_difficulty, ai_heuristic)    
     def transition_to_menu(self):
         """Transition back to menu state"""
         self.current_state = GameState.MENU
         self.current_mode = None
         self.game_screen = None
+    
     def handle_mouse_click(self, pos: tuple[int, int]):
         """Handle mouse click events based on current state"""
         if self.current_state == GameState.MENU:
@@ -36,11 +37,6 @@ class GameStateManager:
                 self.transition_to_game(game_mode, ai_difficulty, ai_heuristic)
         elif self.current_state == GameState.GAME and self.game_screen:
             self.game_screen.handle_mouse_click(pos)
-    
-    def handle_mouse_motion(self, pos: tuple[int, int]):
-        """Handle mouse motion events"""
-        if self.current_state == GameState.GAME and self.game_screen:
-            self.game_screen.handle_mouse_motion(pos)
     
     def handle_key_press(self, key: int) -> bool:
         """Handle key press events based on current state. Returns True if should quit"""
@@ -72,6 +68,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state_manager = GameStateManager()
+    
     def handle_events(self):
         """Handle all pygame events"""
         for event in pygame.event.get():
@@ -79,8 +76,6 @@ class Game:
                 self.running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 self.state_manager.handle_mouse_click(event.pos)
-            elif event.type == pygame.MOUSEMOTION:
-                self.state_manager.handle_mouse_motion(event.pos)
             elif event.type == pygame.KEYDOWN:
                 should_quit = self.state_manager.handle_key_press(event.key)
                 if should_quit:
@@ -90,16 +85,25 @@ class Game:
                 if (self.state_manager.current_state == GameState.GAME and 
                     self.state_manager.game_screen):
                     self.state_manager.game_screen._process_ai_turn()
-                    pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Cancel timerdef update(self):
+                    pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Cancel timer
+    
+    def update(self):
         """Update game logic"""
         # Get delta time for smooth animations
         dt = self.clock.get_time() / 1000.0  # Convert to seconds
         
-        # Update game screen if we're in game state
+        # Update animations if we're in game state
         if (self.state_manager.current_state == GameState.GAME and 
             self.state_manager.game_screen):
-            # Update the refactored game screen (it handles its own animations)
-            self.state_manager.game_screen.update(dt)
+            game_screen = self.state_manager.game_screen
+            
+            # Update board animations
+            game_screen.board.animation_manager.update(dt)
+            
+            # Check if animations are complete to allow next input
+            if (game_screen.is_processing_turn and 
+                game_screen.board.animation_manager.wait_for_completion()):
+                game_screen.is_processing_turn = False
     
     def draw(self):
         """Draw everything to the screen"""

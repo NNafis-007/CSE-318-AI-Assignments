@@ -1,10 +1,9 @@
 """
 Main entry point for the Chain Reaction game.
 This file follows the Single Responsibility Principle by only handling application startup.
-Updated to use the refactored UI/Logic separation.
 """
 
-from src.core.refactored_game_manager import Game
+from src.core.game_manager import Game
 
 def main():
     """Entry point of the application"""

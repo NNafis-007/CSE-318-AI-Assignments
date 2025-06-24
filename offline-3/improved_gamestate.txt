@@ -1,0 +1,9 @@
+Game Over:
+LastPlayer: Red
+MoveCount: 12
+GameOver: True
+Winner: Blue
+Board:
+⚫ 🔵2 🔵1
+🔵2 🔵3 🔵1
+🔵1 ⚫ 🔵2

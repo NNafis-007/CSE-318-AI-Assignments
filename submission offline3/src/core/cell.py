@@ -118,21 +118,18 @@ class Cell:
         for dr, dc in directions:
             new_row = self.row + dr
             new_col = self.col + dc
-              # Check if neighbor is within board bounds
+            
+            # Check if neighbor is within board bounds
             if (0 <= new_row < GRID_ROWS and 
                 0 <= new_col < GRID_COLS):
                 neighbors.append((new_row, new_col))
         
         return neighbors
     
+    
     def is_empty(self) -> bool:
         """Check if the cell is empty."""
         return self.orb_count == 0
-    
-    def reset(self) -> None:
-        """Reset the cell to its initial empty state."""
-        self.orb_count = 0
-        self.player = None
     
     def get_display_info(self) -> dict:
         """
