@@ -1,0 +1,18 @@
+[pygbag]
+name = "Chain Reaction Game"
+author = "CSE 318 AI Lab"
+archive = false
+ume_block = 0
+cdn = "https://pygame-web.github.io/"
+width = 800
+height = 600
+template = "default"
+title = "Chain Reaction - Web Version"
+
+[build]
+optimize = true
+archive = false
+
+[pygame]
+mixer = true
+sound = true
