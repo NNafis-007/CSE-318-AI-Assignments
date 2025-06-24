@@ -8,9 +8,9 @@ root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-import minmax
-import utils
-import colors
+from src import minmax
+from src import utils
+from src import colors
 import random
 from src.config.config import TIME_LIMIT
 

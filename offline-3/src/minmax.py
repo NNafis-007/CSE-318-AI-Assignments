@@ -1,5 +1,13 @@
-import colors
-from utils import *
+import sys
+import os
+
+# Add parent directory to path for src package imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+from src import colors
+from src.utils import *
 
 def minmax(state, depth, alpha, beta, maximizing_player, f_heuristic, ai_player=None):
     """Minimax algorithm with alpha-beta pruning and optional time limit."""

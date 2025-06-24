@@ -1,4 +1,4 @@
-Game Over Move:
-2R 0 3R 0
-0 3R 1R 2R
-1R 3R 0 2R
+AI Blue Move Move:
+2B 0 2B
+2B 4B 0
+1B 2B 2B

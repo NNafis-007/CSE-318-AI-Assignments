@@ -3,7 +3,15 @@ Pure game logic for Chain Reaction - completely separated from UI code.
 This module contains only the core game rules, state management, and business logic.
 """
 
+import sys
+import os
 from typing import Optional, Tuple, List, Dict
+
+# Add parent directory to path for src package imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from src.core.cell import Cell
 
 

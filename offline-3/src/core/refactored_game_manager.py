@@ -6,6 +6,13 @@ Updated to work with the new UI/Logic separation.
 import pygame
 import sys
 from typing import Optional, Tuple
+
+# Add parent directory to path for src package imports
+import os
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from src.config.enums import GameState, GameMode, AIDifficulty, AIHeuristic
 from src.ui.ui_renderer import UIRenderer
 from src.screens.menu_screen import MenuScreen

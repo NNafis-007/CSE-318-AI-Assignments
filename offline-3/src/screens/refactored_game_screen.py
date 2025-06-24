@@ -4,8 +4,15 @@ This module only handles user input, coordinates between game logic and renderin
 """
 
 import pygame
+import sys
 import os
 from typing import Optional, Tuple, List
+
+# Add parent directory to path for src package imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from src.core.interfaces import EventHandler
 from src.ui.game_renderer import GameRenderer
 from src.ui.enhanced_animation import AnimationManager
@@ -44,21 +51,12 @@ class RefactoredGameScreen(EventHandler):
         self.human_player = 1  # Default: Human is player 1
         
         if self.game_mode == GameMode.HUMAN_VS_AI:
-            self._setup_ai_mode()
-    
+            self._setup_ai_mode()    
     def _setup_ai_mode(self):
         """Setup AI player for Human vs AI mode"""
         try:
-            import sys
-            import os
-            
-            # Add root directory to path to import our AI modules
-            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            if root_dir not in sys.path:
-                sys.path.insert(0, root_dir)
-            
             from src.core.ai_player import AIPlayer
-            import colors
+            from src import colors
             
             print("\n=== Human vs AI Setup ===")
             print("You are Player 1 (Red), AI is Player 2 (Blue)")
@@ -282,14 +280,12 @@ class RefactoredGameScreen(EventHandler):
             else:
                 print(f"AI move failed: {result['error']}")
         else:
-            print("AI couldn't find a valid move!")
-        
-        # Reset processing flag
-        self.is_processing_turn = False
+            print("AI couldn't find a valid move!")        
+        # Reset processing flag        self.is_processing_turn = False
     
     def _get_board_copy_for_ai(self):
         """Get a copy of the board in the format expected by AI"""
-        import Board
+        from src import Board
         
         game_state = self.game.get_game_state()
         ai_board = Board.Board(game_state.rows, game_state.cols)

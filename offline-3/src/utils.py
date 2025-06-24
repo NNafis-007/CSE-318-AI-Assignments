@@ -1,6 +1,14 @@
 import copy
-import Board
-import colors
+import sys
+import os
+
+# Add parent directory to path for src package imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+from src import Board
+from src import colors
 
 # Get grid configuration
 try:
@@ -240,12 +248,10 @@ def get_best_move(state: Board.Board, player, depth=3, heuristic_func=heuristic_
         state: Current board state
         player: Player color (colors.RED or colors.BLUE)
         depth: Search depth for minimax
-        heuristic_func: Heuristic function to use for evaluation
-    
-    Returns:
+        heuristic_func: Heuristic function to use for evaluation    Returns:
         tuple: Best move as (row, col) or None if no valid moves
     """
-    import minmax
+    from src import minmax
     
     valid_moves_list = valid_moves(state, player)
     

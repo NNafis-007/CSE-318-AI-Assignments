@@ -1,5 +1,13 @@
 import pygame
+import sys
+import os
 from typing import Optional, Tuple
+
+# Add parent directory to path for src package imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from src.core.interfaces import EventHandler
 from src.ui.ui_renderer import UIRenderer
 from src.config.enums import GameMode, AIDifficulty, AIHeuristic

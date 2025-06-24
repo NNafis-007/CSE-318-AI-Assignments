@@ -1,4 +1,12 @@
+import sys
+import os
 from typing import Optional, List, Tuple
+
+# Add parent directory to path for src package imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from src.config.config import GRID_ROWS, GRID_COLS
 
 
