@@ -6,8 +6,6 @@ import time
 import math
 import random
 
-from src.core import cell
-
 class Player(Enum):
     EMPTY = "Empty"
     RED = "Red"
@@ -619,12 +617,12 @@ class MinimaxAI:
         
         total_orbs = sum(cell.orbs for row in game.board for cell in row if cell.player != Player.EMPTY)
         valid_moves_count = len(game.get_valid_moves(self.player))
-        print(f" --- AI searching at depth {self.depth} for {total_orbs} orbs, {valid_moves_count} valid moves")
+        # print(f" --- AI searching at depth {self.depth} for {total_orbs} orbs, {valid_moves_count} valid moves")
         
         _, best_move = self.minimax_search(game, self.depth)
         
         search_time = time.time() - self.search_start_time
-        print(f" --- Search completed in {search_time:.2f}s with {self.nodes_evaluated:,} nodes")
+        # print(f" --- Search completed in {search_time:.2f}s with {self.nodes_evaluated:,} nodes")
         return best_move
     
 class RandomAI:
@@ -639,7 +637,7 @@ class RandomAI:
         if not valid_moves:
             return None
         move = random.choice(valid_moves)
-        print(f" --- Random AI selected move: {move[0]}, {move[1]}")
+        # print(f" --- Random AI selected move: {move[0]}, {move[1]}")
         return move
 
 class GameController:
