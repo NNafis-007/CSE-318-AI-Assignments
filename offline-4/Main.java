@@ -14,7 +14,6 @@ public class Main {
         return decisionTree.groupRowsByAttribute(attributeColName, minVal, maxVal, intevals);
     }
 
-
     public static void main(String[] args) {
         try {
             DecisionTree decisionTree = new DecisionTree();
@@ -22,6 +21,12 @@ public class Main {
             decisionTree.readCSV(filePath);
 
             ArrayList<String> speciesFromRows = decisionTree.getColumnFromRows("Species");
+
+            if (speciesFromRows != null) {
+                // Test entropy calculation using row-based structure
+                double entFromRows = decisionTree.calcEntropy("Species");
+                System.out.println("Entropy from rows structure: " + entFromRows);
+            }
             // get all column names from header
             ArrayList<String> headers = decisionTree.getHeadersFromRows();
             headers.remove("Species");
@@ -30,10 +35,20 @@ public class Main {
                 System.out.println("Column: " + colName);
                 System.out.println("\n=== Grouping rows by attribute: " + colName + " ===");
                 HashMap<String, ArrayList<ArrayList<String>>> groupedRows = null;
-                if(colName.equals("PetalLengthCm")){                    
-                    groupedRows = groupRowsByAttribute(decisionTree, colName, 0.5, 7.0, 10);                
-                }
-                else{
+
+                // Get count of unique values for each Column
+                int uniqCnt = decisionTree.getUniqueValueCount(colName);
+                System.out.println("\nNumber of unique values in " + colName + " is : " + uniqCnt);
+
+                if (uniqCnt >= 20) {
+                    // Group rows by attribute value in ranges
+                    double minVal = decisionTree.getMinValue(colName);
+                    double maxVal = decisionTree.getMaxValue(colName);
+                    int intervals = (int) Math.round((maxVal - minVal) * 3);
+                    groupedRows = groupRowsByAttribute(decisionTree, colName, minVal, maxVal, intervals);
+                    System.out.println("Grouped rows by " + colName + " in ranges of " + intervals + " intervals.");
+                } else {
+                    // Group rows by attribute value
                     groupedRows = groupRowsByAttribute(decisionTree, colName);
                 }
 
@@ -48,13 +63,6 @@ public class Main {
                 }
 
             }
-
-            if (speciesFromRows != null) {
-
-                // Test entropy calculation using row-based structure
-                double entFromRows = decisionTree.calcEntropy("Species");
-                System.out.println("Entropy from rows structure: " + entFromRows);
-                }
         } catch (Exception e) {
             e.printStackTrace();
         }

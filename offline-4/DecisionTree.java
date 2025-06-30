@@ -205,8 +205,6 @@ public class DecisionTree {
         return prevEnt - entAfterSplit;
     }
 
-    
-
     // Get data from rows structure
     public ArrayList<ArrayList<String>> getDataFromRows() {
         if (rows == null || rows.isEmpty()) {
@@ -342,4 +340,197 @@ public class DecisionTree {
         return splitAttrCol;
     }
 
+    // Function to count unique values from a column name
+    public HashMap<String, Integer> countUniqueValues(String columnName) {
+        HashMap<String, Integer> uniqueCount = new HashMap<>();
+        
+        // Get the column data
+        ArrayList<String> columnData = getColumnFromRows(columnName);
+        if (columnData == null) {
+            System.out.println("Column " + columnName + " not found!");
+            return null;
+        }
+        
+        // Count occurrences of each unique value
+        for (String value : columnData) {
+            uniqueCount.put(value, uniqueCount.getOrDefault(value, 0) + 1);
+        }
+        
+        return uniqueCount;
+    }
+
+    // Function to get the number of unique values in a column
+    public int getUniqueValueCount(String columnName) {
+        HashMap<String, Integer> uniqueValues = countUniqueValues(columnName);
+        return uniqueValues != null ? uniqueValues.size() : 0;
+    }
+
+    // Function to print unique values and their counts for a column
+    public void printUniqueValues(String columnName) {
+        HashMap<String, Integer> uniqueValues = countUniqueValues(columnName);
+        if (uniqueValues != null) {
+            System.out.println("Unique values in column '" + columnName + "':");
+            for (String value : uniqueValues.keySet()) {
+                System.out.println("  " + value + ": " + uniqueValues.get(value));
+            }
+            System.out.println("Total unique values: " + uniqueValues.size());
+        }
+    }
+
+    // Function to get the minimum value from a column (for numeric columns)
+    public double getMinValue(String columnName) {
+        ArrayList<String> columnData = getColumnFromRows(columnName);
+        if (columnData == null || columnData.isEmpty()) {
+            System.out.println("Column " + columnName + " not found or is empty!");
+            return Double.NaN;
+        }
+        
+        double min = Double.MAX_VALUE;
+        boolean hasValidNumber = false;
+        
+        for (String value : columnData) {
+            try {
+                double numValue = Double.parseDouble(value);
+                min = Math.min(min, numValue);
+                hasValidNumber = true;
+            } catch (NumberFormatException e) {
+                // Skip non-numeric values
+                continue;
+            }
+        }
+        
+        if (!hasValidNumber) {
+            System.out.println("Column " + columnName + " contains no valid numeric values!");
+            return Double.NaN;
+        }
+        
+        return min;
+    }
+
+    // Function to get the maximum value from a column (for numeric columns)
+    public double getMaxValue(String columnName) {
+        ArrayList<String> columnData = getColumnFromRows(columnName);
+        if (columnData == null || columnData.isEmpty()) {
+            System.out.println("Column " + columnName + " not found or is empty!");
+            return Double.NaN;
+        }
+        
+        double max = Double.MIN_VALUE;
+        boolean hasValidNumber = false;
+        
+        for (String value : columnData) {
+            try {
+                double numValue = Double.parseDouble(value);
+                max = Math.max(max, numValue);
+                hasValidNumber = true;
+            } catch (NumberFormatException e) {
+                // Skip non-numeric values
+                continue;
+            }
+        }
+        
+        if (!hasValidNumber) {
+            System.out.println("Column " + columnName + " contains no valid numeric values!");
+            return Double.NaN;
+        }
+        
+        return max;
+    }
+
+    // Function to get both min and max values from a column
+    public double[] getMinMaxValues(String columnName) {
+        ArrayList<String> columnData = getColumnFromRows(columnName);
+        if (columnData == null || columnData.isEmpty()) {
+            System.out.println("Column " + columnName + " not found or is empty!");
+            return null;
+        }
+        
+        double min = Double.MAX_VALUE;
+        double max = Double.MIN_VALUE;
+        boolean hasValidNumber = false;
+        
+        for (String value : columnData) {
+            try {
+                double numValue = Double.parseDouble(value);
+                min = Math.min(min, numValue);
+                max = Math.max(max, numValue);
+                hasValidNumber = true;
+            } catch (NumberFormatException e) {
+                // Skip non-numeric values
+                continue;
+            }
+        }
+        
+        if (!hasValidNumber) {
+            System.out.println("Column " + columnName + " contains no valid numeric values!");
+            return null;
+        }
+        
+        return new double[]{min, max};
+    }
+
+    // Function to get the minimum value from a column (for string columns - lexicographically)
+    public String getMinStringValue(String columnName) {
+        ArrayList<String> columnData = getColumnFromRows(columnName);
+        if (columnData == null || columnData.isEmpty()) {
+            System.out.println("Column " + columnName + " not found or is empty!");
+            return null;
+        }
+        
+        String min = columnData.get(0);
+        for (String value : columnData) {
+            if (value.compareTo(min) < 0) {
+                min = value;
+            }
+        }
+        
+        return min;
+    }
+
+    // Function to get the maximum value from a column (for string columns - lexicographically)
+    public String getMaxStringValue(String columnName) {
+        ArrayList<String> columnData = getColumnFromRows(columnName);
+        if (columnData == null || columnData.isEmpty()) {
+            System.out.println("Column " + columnName + " not found or is empty!");
+            return null;
+        }
+        
+        String max = columnData.get(0);
+        for (String value : columnData) {
+            if (value.compareTo(max) > 0) {
+                max = value;
+            }
+        }
+        
+        return max;
+    }
+
+    // Function to print summary statistics for a numeric column
+    public void printColumnStats(String columnName) {
+        System.out.println("Statistics for column '" + columnName + "':");
+        
+        // Try numeric statistics first
+        double min = getMinValue(columnName);
+        double max = getMaxValue(columnName);
+        
+        if (!Double.isNaN(min) && !Double.isNaN(max)) {
+            System.out.println("  Numeric Range: " + min + " to " + max);
+            System.out.println("  Range Size: " + (max - min));
+        } else {
+            // If not numeric, show string range
+            String minStr = getMinStringValue(columnName);
+            String maxStr = getMaxStringValue(columnName);
+            if (minStr != null && maxStr != null) {
+                System.out.println("  String Range: '" + minStr + "' to '" + maxStr + "' (lexicographically)");
+            }
+        }
+        
+        int uniqueCount = getUniqueValueCount(columnName);
+        System.out.println("  Unique Values: " + uniqueCount);
+        
+        ArrayList<String> columnData = getColumnFromRows(columnName);
+        if (columnData != null) {
+            System.out.println("  Total Records: " + columnData.size());
+        }
+    }
 }
