@@ -60,6 +60,15 @@ public class Main {
                     System.out.println("\n=== Calculating Information Gain ===");
                     double ig = decisionTree.calcIG(speciesFromRows, colName, groupedRows);
                     System.out.println("Information Gain for " + colName + ": " + ig);
+
+                    System.out.println("\n === Calculating Information Gain Ratio (IGR) ===");
+                    double igr = decisionTree.calcIGR(speciesFromRows, colName, groupedRows);
+                    System.out.println("Information Gain Ratio for " + colName + ": " + igr);
+
+                    // Calculate NWIG
+                    System.out.println("\n=== Calculating Normalized Weighted Information Gain (NWIG) ===");
+                    double nwig = decisionTree.calcNWIG(speciesFromRows, colName, groupedRows);
+                    System.out.println("Normalized Weighted Information Gain for " + colName + ": " + nwig);
                 }
 
             }

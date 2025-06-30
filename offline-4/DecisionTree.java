@@ -11,19 +11,19 @@ public class DecisionTree {
         rows = new HashMap<>();
         ArrayList<String[]> tempData = new ArrayList<>();
         String[] headers = null;
-        
+
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
             boolean isFirstLine = true;
-            
+
             while ((line = br.readLine()) != null) {
                 String[] values = line.split(",");
-                
+
                 // Clean up values (remove quotes and trim whitespace)
                 for (int i = 0; i < values.length; i++) {
                     values[i] = values[i].trim().replaceAll("^\"|\"$", "");
                 }
-                
+
                 if (isFirstLine) {
                     headers = values;
                     isFirstLine = false;
@@ -32,7 +32,7 @@ public class DecisionTree {
                 }
             }
         }
-        
+
         // Store headers at ID = 0
         if (headers != null) {
             ArrayList<String> headersList = new ArrayList<>();
@@ -41,7 +41,7 @@ public class DecisionTree {
             }
             rows.put(0, headersList);
         }
-        
+
         // Store each row with ID starting from 1
         for (int i = 0; i < tempData.size(); i++) {
             ArrayList<String> rowData = new ArrayList<>();
@@ -97,17 +97,17 @@ public class DecisionTree {
             System.out.println("Column " + columnName + " does not exist in the dataset.");
             return null;
         }
-        
+
         int columnIndex = headers.indexOf(columnName);
         ArrayList<String> columnData = new ArrayList<>();
-        
+
         for (Integer id : getRowIds()) {
             ArrayList<String> row = rows.get(id);
             if (row != null) {
                 columnData.add(row.get(columnIndex));
             }
         }
-        
+
         return columnData;
     }
 
@@ -119,7 +119,7 @@ public class DecisionTree {
             if (headers != null) {
                 System.out.println("Headers (ID=0): " + String.join(", ", headers));
             }
-            
+
             // Print data rows
             for (Integer id : getRowIds()) {
                 ArrayList<String> row = getRow(id);
@@ -131,7 +131,7 @@ public class DecisionTree {
     }
 
     // Send the labels column I want to calc entropy for
-    public double calcEntropy(ArrayList<String> targetCol){
+    public double calcEntropy(ArrayList<String> targetCol) {
         if (targetCol == null || targetCol.size() == 0) {
             return 0.0;
         }
@@ -143,18 +143,17 @@ public class DecisionTree {
         }
         double entropy = 0.0;
         int total = targetCol.size();
-        
 
-        for(String key : freqMap.keySet()){
+        for (String key : freqMap.keySet()) {
             double freq = freqMap.get(key);
             double p_c = freq / total;
-            System.out.println("Key: " + key + ", Frequency: " 
-                + freq + ", prob : " + p_c);
+            // System.out.println("Key: " + key + ", Frequency: "
+            //         + freq + ", prob : " + p_c);
             entropy += p_c * Math.log(p_c) / Math.log(2);
         }
 
         entropy = -entropy; // Entropy is negative of the sum
-        
+
         return entropy;
     }
 
@@ -162,10 +161,11 @@ public class DecisionTree {
     public double calcEntropy(String columnName) {
         ArrayList<String> targetCol = getColumnFromRows(columnName);
         return calcEntropy(targetCol);
-    }    
-    
-    public double calcIG(ArrayList<String> targetCol, String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-        
+    }
+
+    public double calcIG(ArrayList<String> targetCol, String attributeColName,
+            HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
+
         double prevEnt = this.calcEntropy(targetCol);
         double entAfterSplit = 0.0;
 
@@ -174,7 +174,7 @@ public class DecisionTree {
 
         int indexOfSpecies = getHeadersFromRows().indexOf("Species");
         int totalRows = this.getRowCount();
-        if(indexOfSpecies < 0) {
+        if (indexOfSpecies < 0) {
             System.out.println("Species column not found in headers!");
             return -1.0;
         }
@@ -186,23 +186,78 @@ public class DecisionTree {
             }
 
             ArrayList<String> speciesCol = new ArrayList<>();
-            for(var row : rowsForValue ){
+            for (var row : rowsForValue) {
                 speciesCol.add(row.get(indexOfSpecies)); // Extract species column for this attribute value
             }
 
             double entForValue = calcEntropy(speciesCol);
 
+            // extract species column for this
 
-            // extract species column for this 
-
-            System.out.println("Attribute Value: " + attrValue + " (Count: " + rowsForValue.size() + ") - Entropy: " + entForValue);
-            entAfterSplit += ((double)rowsForValue.size() / totalRows)  * entForValue;
-            // for (ArrayList<String> row : rowsForValue) {
-            //     System.out.println("    Row: " + String.join(", ", row));
-            // }
+            // System.out.println("Attribute Value: " + attrValue + " (Count: " + rowsForValue.size() + ") - Entropy: "
+            //         + entForValue);
+            entAfterSplit += ((double) rowsForValue.size() / totalRows) * entForValue;
         }
-    
+
         return prevEnt - entAfterSplit;
+    }
+
+    // Calc IV
+    private double calcIV(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
+        double iv = 0.0;
+        int totalRows = getColumn(attributeColName).size();
+
+        for (String attrValue : groupedRows.keySet()) {
+            ArrayList<ArrayList<String>> rowsForValue = groupedRows.get(attrValue);
+            if (rowsForValue == null || rowsForValue.isEmpty()) {
+                continue;
+            }
+
+            double p_c = (double) rowsForValue.size() / totalRows;
+            iv += p_c * Math.log(p_c) / Math.log(2);
+        }
+
+        return -iv; // IV is negative of the sum
+    }
+
+    public double calcIGR(ArrayList<String> targetCol, String attributeColName,
+            HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
+
+        double ig = calcIG(targetCol, attributeColName, groupedRows);
+        double iv = calcIV(attributeColName, groupedRows);
+
+        double igr = (ig / iv);
+
+        return igr;
+    }
+
+    public double calcNWIG(ArrayList<String> targetCol, String attributeColName,
+            HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
+
+        // 1) Raw information gain
+        double ig = calcIG(targetCol, attributeColName, groupedRows);
+        if (ig < 0) {
+            // propagate error
+            System.out.println("Negative ig for column: " + attributeColName);
+            return -1.0;
+        }
+
+        int k = groupedRows.size();
+        int totalRows = this.getRowCount(); // |S|
+        
+        // 4) Normalizer: log2(k + 1)
+        double logNormalizer = Math.log(k + 1) / Math.log(2);
+        if (logNormalizer == 0) {
+            // if k+1 == 1, i.e. k == 0, no split at all → NWIG = 0
+            return 0.0;
+        }
+
+        // 5) Size penalty =  (1 - (k-1 / |S|))
+        double sizePenalty = 1.0 - ((double) (k - 1) / totalRows);
+
+        // 6) Compute NWIG
+        double nwig = (ig / logNormalizer) * sizePenalty;
+        return nwig;
     }
 
     // Get data from rows structure
@@ -210,9 +265,9 @@ public class DecisionTree {
         if (rows == null || rows.isEmpty()) {
             return null;
         }
-        
+
         ArrayList<ArrayList<String>> data = new ArrayList<>();
-        
+
         // Add all rows except headers (ID = 0)
         for (Integer id : getRowIds()) {
             ArrayList<String> row = getRow(id);
@@ -220,7 +275,7 @@ public class DecisionTree {
                 data.add(new ArrayList<>(row));
             }
         }
-        
+
         return data;
     }
 
@@ -228,7 +283,7 @@ public class DecisionTree {
         if (rows != null && !rows.isEmpty()) {
             ArrayList<String> headers = getHeadersFromRows();
             System.out.println("Headers: " + String.join(", ", headers));
-            
+
             ArrayList<ArrayList<String>> data = getDataFromRows();
             if (data != null) {
                 for (ArrayList<String> row : data) {
@@ -238,7 +293,7 @@ public class DecisionTree {
         }
     }
 
-        public void printColumn(String columnName) {
+    public void printColumn(String columnName) {
         ArrayList<String> columnData = getColumnFromRows(columnName);
         if (columnData != null) {
             System.out.println("Column: " + columnName);
@@ -254,11 +309,11 @@ public class DecisionTree {
     public ArrayList<String> getHeaders() {
         return getHeadersFromRows();
     }
-    
+
     public ArrayList<ArrayList<String>> getData() {
         return getDataFromRows();
     }
-    
+
     public ArrayList<String> getColumn(String columnName) {
         return getColumnFromRows(columnName);
     }
@@ -277,22 +332,23 @@ public class DecisionTree {
         // iterate over all rows and group rows by attribute value
         ArrayList<ArrayList<String>> allRows = getDataFromRows();
         ArrayList<String> headers = getHeaders();
-        
-        for(ArrayList<String> row : allRows) {
+
+        for (ArrayList<String> row : allRows) {
             int attrIdx = headers.indexOf(attributeColName);
             if (attrIdx >= 0 && attrIdx < row.size()) {
                 String attrVal = row.get(attrIdx);
                 splitAttrCol.putIfAbsent(attrVal, new ArrayList<ArrayList<String>>());
 
                 ArrayList<ArrayList<String>> curr_rows = splitAttrCol.get(attrVal);
-                curr_rows.add(row);  
-                splitAttrCol.put(attrVal, curr_rows);  
+                curr_rows.add(row);
+                splitAttrCol.put(attrVal, curr_rows);
             }
         }
         return splitAttrCol;
     }
 
-    public HashMap<String, ArrayList<ArrayList<String>>> groupRowsByAttribute(String attributeColName, double min, double max, int intervals) {
+    public HashMap<String, ArrayList<ArrayList<String>>> groupRowsByAttribute(String attributeColName, double min,
+            double max, int intervals) {
         HashMap<String, ArrayList<ArrayList<String>>> splitAttrCol = new HashMap<>();
 
         // Check if the attribute column exists
@@ -304,22 +360,21 @@ public class DecisionTree {
 
         ArrayList<Double> ranges = new ArrayList<>();
 
-        
         double stepSize = (max - min) / intervals;
 
-        for(double i = min; i <= max; i += stepSize) {
+        for (double i = min; i <= max; i += stepSize) {
             ranges.add(i);
         }
 
-        for(var range : ranges) {
+        for (var range : ranges) {
             splitAttrCol.putIfAbsent(String.valueOf(range), new ArrayList<ArrayList<String>>());
         }
 
         // iterate over all rows and group rows by attribute value
         ArrayList<ArrayList<String>> allRows = getDataFromRows();
         ArrayList<String> headers = getHeaders();
-        
-        for(ArrayList<String> row : allRows) {
+
+        for (ArrayList<String> row : allRows) {
             int attrIdx = headers.indexOf(attributeColName);
             if (attrIdx >= 0 && attrIdx < row.size()) {
                 String attrVal = row.get(attrIdx);
@@ -333,8 +388,8 @@ public class DecisionTree {
                 }
 
                 ArrayList<ArrayList<String>> curr_rows = splitAttrCol.get(String.valueOf(initRange));
-                curr_rows.add(row);  
-                splitAttrCol.put(String.valueOf(initRange), curr_rows);  
+                curr_rows.add(row);
+                splitAttrCol.put(String.valueOf(initRange), curr_rows);
             }
         }
         return splitAttrCol;
@@ -343,19 +398,19 @@ public class DecisionTree {
     // Function to count unique values from a column name
     public HashMap<String, Integer> countUniqueValues(String columnName) {
         HashMap<String, Integer> uniqueCount = new HashMap<>();
-        
+
         // Get the column data
         ArrayList<String> columnData = getColumnFromRows(columnName);
         if (columnData == null) {
             System.out.println("Column " + columnName + " not found!");
             return null;
         }
-        
+
         // Count occurrences of each unique value
         for (String value : columnData) {
             uniqueCount.put(value, uniqueCount.getOrDefault(value, 0) + 1);
         }
-        
+
         return uniqueCount;
     }
 
@@ -384,10 +439,10 @@ public class DecisionTree {
             System.out.println("Column " + columnName + " not found or is empty!");
             return Double.NaN;
         }
-        
+
         double min = Double.MAX_VALUE;
         boolean hasValidNumber = false;
-        
+
         for (String value : columnData) {
             try {
                 double numValue = Double.parseDouble(value);
@@ -398,12 +453,12 @@ public class DecisionTree {
                 continue;
             }
         }
-        
+
         if (!hasValidNumber) {
             System.out.println("Column " + columnName + " contains no valid numeric values!");
             return Double.NaN;
         }
-        
+
         return min;
     }
 
@@ -414,10 +469,10 @@ public class DecisionTree {
             System.out.println("Column " + columnName + " not found or is empty!");
             return Double.NaN;
         }
-        
+
         double max = Double.MIN_VALUE;
         boolean hasValidNumber = false;
-        
+
         for (String value : columnData) {
             try {
                 double numValue = Double.parseDouble(value);
@@ -428,12 +483,12 @@ public class DecisionTree {
                 continue;
             }
         }
-        
+
         if (!hasValidNumber) {
             System.out.println("Column " + columnName + " contains no valid numeric values!");
             return Double.NaN;
         }
-        
+
         return max;
     }
 
@@ -444,11 +499,11 @@ public class DecisionTree {
             System.out.println("Column " + columnName + " not found or is empty!");
             return null;
         }
-        
+
         double min = Double.MAX_VALUE;
         double max = Double.MIN_VALUE;
         boolean hasValidNumber = false;
-        
+
         for (String value : columnData) {
             try {
                 double numValue = Double.parseDouble(value);
@@ -460,59 +515,61 @@ public class DecisionTree {
                 continue;
             }
         }
-        
+
         if (!hasValidNumber) {
             System.out.println("Column " + columnName + " contains no valid numeric values!");
             return null;
         }
-        
-        return new double[]{min, max};
+
+        return new double[] { min, max };
     }
 
-    // Function to get the minimum value from a column (for string columns - lexicographically)
+    // Function to get the minimum value from a column (for string columns -
+    // lexicographically)
     public String getMinStringValue(String columnName) {
         ArrayList<String> columnData = getColumnFromRows(columnName);
         if (columnData == null || columnData.isEmpty()) {
             System.out.println("Column " + columnName + " not found or is empty!");
             return null;
         }
-        
+
         String min = columnData.get(0);
         for (String value : columnData) {
             if (value.compareTo(min) < 0) {
                 min = value;
             }
         }
-        
+
         return min;
     }
 
-    // Function to get the maximum value from a column (for string columns - lexicographically)
+    // Function to get the maximum value from a column (for string columns -
+    // lexicographically)
     public String getMaxStringValue(String columnName) {
         ArrayList<String> columnData = getColumnFromRows(columnName);
         if (columnData == null || columnData.isEmpty()) {
             System.out.println("Column " + columnName + " not found or is empty!");
             return null;
         }
-        
+
         String max = columnData.get(0);
         for (String value : columnData) {
             if (value.compareTo(max) > 0) {
                 max = value;
             }
         }
-        
+
         return max;
     }
 
     // Function to print summary statistics for a numeric column
     public void printColumnStats(String columnName) {
         System.out.println("Statistics for column '" + columnName + "':");
-        
+
         // Try numeric statistics first
         double min = getMinValue(columnName);
         double max = getMaxValue(columnName);
-        
+
         if (!Double.isNaN(min) && !Double.isNaN(max)) {
             System.out.println("  Numeric Range: " + min + " to " + max);
             System.out.println("  Range Size: " + (max - min));
@@ -524,10 +581,10 @@ public class DecisionTree {
                 System.out.println("  String Range: '" + minStr + "' to '" + maxStr + "' (lexicographically)");
             }
         }
-        
+
         int uniqueCount = getUniqueValueCount(columnName);
         System.out.println("  Unique Values: " + uniqueCount);
-        
+
         ArrayList<String> columnData = getColumnFromRows(columnName);
         if (columnData != null) {
             System.out.println("  Total Records: " + columnData.size());
