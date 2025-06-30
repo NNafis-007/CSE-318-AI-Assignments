@@ -1,593 +1,128 @@
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class DecisionTree {
-    private HashMap<Integer, ArrayList<String>> rows;
-
-    public void readCSV(String filePath) throws IOException {
-        rows = new HashMap<>();
-        ArrayList<String[]> tempData = new ArrayList<>();
-        String[] headers = null;
-
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            boolean isFirstLine = true;
-
-            while ((line = br.readLine()) != null) {
-                String[] values = line.split(",");
-
-                // Clean up values (remove quotes and trim whitespace)
-                for (int i = 0; i < values.length; i++) {
-                    values[i] = values[i].trim().replaceAll("^\"|\"$", "");
-                }
-
-                if (isFirstLine) {
-                    headers = values;
-                    isFirstLine = false;
-                } else {
-                    tempData.add(values);
-                }
-            }
-        }
-
-        // Store headers at ID = 0
-        if (headers != null) {
-            ArrayList<String> headersList = new ArrayList<>();
-            for (String header : headers) {
-                headersList.add(header);
-            }
-            rows.put(0, headersList);
-        }
-
-        // Store each row with ID starting from 1
-        for (int i = 0; i < tempData.size(); i++) {
-            ArrayList<String> rowData = new ArrayList<>();
-            for (String value : tempData.get(i)) {
-                rowData.add(value);
-            }
-            rows.put(i + 1, rowData);
-        }
+    private Dataset dataset;
+    private String targetColumn;
+    
+    // Constructor
+    public DecisionTree(Dataset dataset, String targetColumn) {
+        this.dataset = dataset;
+        this.targetColumn = targetColumn;
     }
-
-    // Get headers from rows structure
-    public ArrayList<String> getHeadersFromRows() {
-        if (rows != null && rows.containsKey(0)) {
-            return new ArrayList<>(rows.get(0));
-        }
-        return null;
+    
+    // Get the dataset
+    public Dataset getDataset() {
+        return dataset;
     }
-
-    // Get a specific row by ID
-    public ArrayList<String> getRow(int id) {
-        if (rows != null && rows.containsKey(id)) {
-            return new ArrayList<>(rows.get(id));
-        }
-        return null;
+    
+    // Get the target column name
+    public String getTargetColumn() {
+        return targetColumn;
     }
-
-    // Get all row IDs (excluding headers at ID 0)
-    public ArrayList<Integer> getRowIds() {
-        if (rows != null) {
-            ArrayList<Integer> ids = new ArrayList<>();
-            for (Integer id : rows.keySet()) {
-                if (id != 0) { // Exclude headers
-                    ids.add(id);
-                }
-            }
-            return ids;
-        }
-        return null;
+    
+    // Set the target column
+    public void setTargetColumn(String targetColumn) {
+        this.targetColumn = targetColumn;
     }
-
-    // Get total number of data rows (excluding headers)
-    public int getRowCount() {
-        if (rows != null) {
-            return rows.size() - 1; // Subtract 1 for headers
-        }
-        return 0;
+    
+    // Calculate entropy for the target column
+    public double calcEntropy() {
+        return Criteria.calcEntropy(dataset, targetColumn);
     }
-
-    // Get column data by column name from rows structure
-    public ArrayList<String> getColumnFromRows(String columnName) {
-        ArrayList<String> headers = getHeadersFromRows();
-        if (headers == null || !headers.contains(columnName)) {
-            System.out.println("Column " + columnName + " does not exist in the dataset.");
-            return null;
-        }
-
-        int columnIndex = headers.indexOf(columnName);
-        ArrayList<String> columnData = new ArrayList<>();
-
-        for (Integer id : getRowIds()) {
-            ArrayList<String> row = rows.get(id);
-            if (row != null) {
-                columnData.add(row.get(columnIndex));
-            }
-        }
-
-        return columnData;
+    
+    // Calculate Information Gain for an attribute
+    public double calcIG(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
+        ArrayList<String> targetCol = dataset.getColumn(targetColumn);
+        return Criteria.calcIG(dataset, targetCol, attributeColName, groupedRows);
     }
-
-    // Print data in row format
-    public void printRowData() {
-        if (rows != null && !rows.isEmpty()) {
-            // Print headers
-            ArrayList<String> headers = getHeadersFromRows();
-            if (headers != null) {
-                System.out.println("Headers (ID=0): " + String.join(", ", headers));
-            }
-
-            // Print data rows
-            for (Integer id : getRowIds()) {
-                ArrayList<String> row = getRow(id);
-                if (row != null) {
-                    System.out.println("Row " + id + ": " + String.join(", ", row));
-                }
-            }
-        }
+    
+    // Calculate Information Gain Ratio for an attribute
+    public double calcIGR(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
+        ArrayList<String> targetCol = dataset.getColumn(targetColumn);
+        return Criteria.calcIGR(dataset, targetCol, attributeColName, groupedRows);
     }
-
-    // Send the labels column I want to calc entropy for
-    public double calcEntropy(ArrayList<String> targetCol) {
-        if (targetCol == null || targetCol.size() == 0) {
-            return 0.0;
-        }
-        // for each unique value in targetCol, count the frequency
-        HashMap<String, Integer> freqMap = new HashMap<>();
-        for (String target : targetCol) {
-            // Count the frequency of each target value
-            freqMap.put(target, freqMap.getOrDefault(target, 0) + 1);
-        }
-        double entropy = 0.0;
-        int total = targetCol.size();
-
-        for (String key : freqMap.keySet()) {
-            double freq = freqMap.get(key);
-            double p_c = freq / total;
-            // System.out.println("Key: " + key + ", Frequency: "
-            //         + freq + ", prob : " + p_c);
-            entropy += p_c * Math.log(p_c) / Math.log(2);
-        }
-
-        entropy = -entropy; // Entropy is negative of the sum
-
-        return entropy;
+    
+    // Calculate Normalized Weighted Information Gain for an attribute
+    public double calcNWIG(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
+        ArrayList<String> targetCol = dataset.getColumn(targetColumn);
+        return Criteria.calcNWIG(dataset, targetCol, attributeColName, groupedRows);
     }
-
-    // Overloaded method to calculate entropy using column name from rows structure
-    public double calcEntropy(String columnName) {
-        ArrayList<String> targetCol = getColumnFromRows(columnName);
-        return calcEntropy(targetCol);
-    }
-
-    public double calcIG(ArrayList<String> targetCol, String attributeColName,
-            HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-
-        double prevEnt = this.calcEntropy(targetCol);
-        double entAfterSplit = 0.0;
-
-        // Print the grouped attribute columns
-        System.out.println("Grouped rows by attribute '" + attributeColName + "':");
-
-        int indexOfSpecies = getHeadersFromRows().indexOf("Species");
-        int totalRows = this.getRowCount();
-        if (indexOfSpecies < 0) {
-            System.out.println("Species column not found in headers!");
-            return -1.0;
-        }
-
-        for (String attrValue : groupedRows.keySet()) {
-            ArrayList<ArrayList<String>> rowsForValue = groupedRows.get(attrValue);
-            if (rowsForValue == null || rowsForValue.isEmpty()) {
-                continue; // Skip if no rows for this attribute value
-            }
-
-            ArrayList<String> speciesCol = new ArrayList<>();
-            for (var row : rowsForValue) {
-                speciesCol.add(row.get(indexOfSpecies)); // Extract species column for this attribute value
-            }
-
-            double entForValue = calcEntropy(speciesCol);
-
-            // extract species column for this
-
-            // System.out.println("Attribute Value: " + attrValue + " (Count: " + rowsForValue.size() + ") - Entropy: "
-            //         + entForValue);
-            entAfterSplit += ((double) rowsForValue.size() / totalRows) * entForValue;
-        }
-
-        return prevEnt - entAfterSplit;
-    }
-
-    // Calc IV
-    private double calcIV(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-        double iv = 0.0;
-        int totalRows = getColumn(attributeColName).size();
-
-        for (String attrValue : groupedRows.keySet()) {
-            ArrayList<ArrayList<String>> rowsForValue = groupedRows.get(attrValue);
-            if (rowsForValue == null || rowsForValue.isEmpty()) {
-                continue;
-            }
-
-            double p_c = (double) rowsForValue.size() / totalRows;
-            iv += p_c * Math.log(p_c) / Math.log(2);
-        }
-
-        return -iv; // IV is negative of the sum
-    }
-
-    public double calcIGR(ArrayList<String> targetCol, String attributeColName,
-            HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-
-        double ig = calcIG(targetCol, attributeColName, groupedRows);
-        double iv = calcIV(attributeColName, groupedRows);
-
-        double igr = (ig / iv);
-
-        return igr;
-    }
-
-    public double calcNWIG(ArrayList<String> targetCol, String attributeColName,
-            HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-
-        // 1) Raw information gain
-        double ig = calcIG(targetCol, attributeColName, groupedRows);
-        if (ig < 0) {
-            // propagate error
-            System.out.println("Negative ig for column: " + attributeColName);
-            return -1.0;
-        }
-
-        int k = groupedRows.size();
-        int totalRows = this.getRowCount(); // |S|
+    
+    // Find the best attribute to split on using Information Gain
+    public String findBestAttributeIG(ArrayList<String> attributes) {
+        String bestAttribute = null;
+        double bestIG = -1.0;
         
-        // 4) Normalizer: log2(k + 1)
-        double logNormalizer = Math.log(k + 1) / Math.log(2);
-        if (logNormalizer == 0) {
-            // if k+1 == 1, i.e. k == 0, no split at all → NWIG = 0
-            return 0.0;
-        }
-
-        // 5) Size penalty =  (1 - (k-1 / |S|))
-        double sizePenalty = 1.0 - ((double) (k - 1) / totalRows);
-
-        // 6) Compute NWIG
-        double nwig = (ig / logNormalizer) * sizePenalty;
-        return nwig;
-    }
-
-    // Get data from rows structure
-    public ArrayList<ArrayList<String>> getDataFromRows() {
-        if (rows == null || rows.isEmpty()) {
-            return null;
-        }
-
-        ArrayList<ArrayList<String>> data = new ArrayList<>();
-
-        // Add all rows except headers (ID = 0)
-        for (Integer id : getRowIds()) {
-            ArrayList<String> row = getRow(id);
-            if (row != null) {
-                data.add(new ArrayList<>(row));
-            }
-        }
-
-        return data;
-    }
-
-    public void printData() {
-        if (rows != null && !rows.isEmpty()) {
-            ArrayList<String> headers = getHeadersFromRows();
-            System.out.println("Headers: " + String.join(", ", headers));
-
-            ArrayList<ArrayList<String>> data = getDataFromRows();
-            if (data != null) {
-                for (ArrayList<String> row : data) {
-                    System.out.println(String.join(", ", row));
+        for (String attribute : attributes) {
+            if (attribute.equals(targetColumn)) continue; // Skip target column
+            
+            HashMap<String, ArrayList<ArrayList<String>>> groupedRows = dataset.groupRowsByAttribute(attribute);
+            if (groupedRows != null) {
+                double ig = calcIG(attribute, groupedRows);
+                if (ig > bestIG) {
+                    bestIG = ig;
+                    bestAttribute = attribute;
                 }
             }
         }
+        
+        return bestAttribute;
     }
-
-    public void printColumn(String columnName) {
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData != null) {
-            System.out.println("Column: " + columnName);
-            for (String value : columnData) {
-                System.out.println(value);
-            }
-        } else {
-            System.out.println("Column " + columnName + " does not exist.");
-        }
-    }
-
-    // Convenience methods with cleaner names
-    public ArrayList<String> getHeaders() {
-        return getHeadersFromRows();
-    }
-
-    public ArrayList<ArrayList<String>> getData() {
-        return getDataFromRows();
-    }
-
-    public ArrayList<String> getColumn(String columnName) {
-        return getColumnFromRows(columnName);
-    }
-
-    // Method to group rows by attribute value
-    public HashMap<String, ArrayList<ArrayList<String>>> groupRowsByAttribute(String attributeColName) {
-        HashMap<String, ArrayList<ArrayList<String>>> splitAttrCol = new HashMap<>();
-
-        // Check if the attribute column exists
-        ArrayList<String> attributeCol = getColumnFromRows(attributeColName);
-        if (attributeCol == null) {
-            System.out.println("Column " + attributeColName + " not found!");
-            return null;
-        }
-
-        // iterate over all rows and group rows by attribute value
-        ArrayList<ArrayList<String>> allRows = getDataFromRows();
-        ArrayList<String> headers = getHeaders();
-
-        for (ArrayList<String> row : allRows) {
-            int attrIdx = headers.indexOf(attributeColName);
-            if (attrIdx >= 0 && attrIdx < row.size()) {
-                String attrVal = row.get(attrIdx);
-                splitAttrCol.putIfAbsent(attrVal, new ArrayList<ArrayList<String>>());
-
-                ArrayList<ArrayList<String>> curr_rows = splitAttrCol.get(attrVal);
-                curr_rows.add(row);
-                splitAttrCol.put(attrVal, curr_rows);
-            }
-        }
-        return splitAttrCol;
-    }
-
-    public HashMap<String, ArrayList<ArrayList<String>>> groupRowsByAttribute(String attributeColName, double min,
-            double max, int intervals) {
-        HashMap<String, ArrayList<ArrayList<String>>> splitAttrCol = new HashMap<>();
-
-        // Check if the attribute column exists
-        ArrayList<String> attributeCol = getColumnFromRows(attributeColName);
-        if (attributeCol == null) {
-            System.out.println("Column " + attributeColName + " not found!");
-            return null;
-        }
-
-        ArrayList<Double> ranges = new ArrayList<>();
-
-        double stepSize = (max - min) / intervals;
-
-        for (double i = min; i <= max; i += stepSize) {
-            ranges.add(i);
-        }
-
-        for (var range : ranges) {
-            splitAttrCol.putIfAbsent(String.valueOf(range), new ArrayList<ArrayList<String>>());
-        }
-
-        // iterate over all rows and group rows by attribute value
-        ArrayList<ArrayList<String>> allRows = getDataFromRows();
-        ArrayList<String> headers = getHeaders();
-
-        for (ArrayList<String> row : allRows) {
-            int attrIdx = headers.indexOf(attributeColName);
-            if (attrIdx >= 0 && attrIdx < row.size()) {
-                String attrVal = row.get(attrIdx);
-
-                double initRange = min;
-                for (double range = min + stepSize; range <= max; range += stepSize) {
-                    if (Double.parseDouble(attrVal) >= initRange && Double.parseDouble(attrVal) < range) {
-                        break;
-                    }
-                    initRange = range;
+    
+    // Find the best attribute to split on using Information Gain Ratio
+    public String findBestAttributeIGR(ArrayList<String> attributes) {
+        String bestAttribute = null;
+        double bestIGR = -1.0;
+        
+        for (String attribute : attributes) {
+            if (attribute.equals(targetColumn)) continue; // Skip target column
+            
+            HashMap<String, ArrayList<ArrayList<String>>> groupedRows = dataset.groupRowsByAttribute(attribute);
+            if (groupedRows != null) {
+                double igr = calcIGR(attribute, groupedRows);
+                if (igr > bestIGR) {
+                    bestIGR = igr;
+                    bestAttribute = attribute;
                 }
-
-                ArrayList<ArrayList<String>> curr_rows = splitAttrCol.get(String.valueOf(initRange));
-                curr_rows.add(row);
-                splitAttrCol.put(String.valueOf(initRange), curr_rows);
             }
         }
-        return splitAttrCol;
+        
+        return bestAttribute;
     }
-
-    // Function to count unique values from a column name
-    public HashMap<String, Integer> countUniqueValues(String columnName) {
-        HashMap<String, Integer> uniqueCount = new HashMap<>();
-
-        // Get the column data
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData == null) {
-            System.out.println("Column " + columnName + " not found!");
-            return null;
-        }
-
-        // Count occurrences of each unique value
-        for (String value : columnData) {
-            uniqueCount.put(value, uniqueCount.getOrDefault(value, 0) + 1);
-        }
-
-        return uniqueCount;
-    }
-
-    // Function to get the number of unique values in a column
-    public int getUniqueValueCount(String columnName) {
-        HashMap<String, Integer> uniqueValues = countUniqueValues(columnName);
-        return uniqueValues != null ? uniqueValues.size() : 0;
-    }
-
-    // Function to print unique values and their counts for a column
-    public void printUniqueValues(String columnName) {
-        HashMap<String, Integer> uniqueValues = countUniqueValues(columnName);
-        if (uniqueValues != null) {
-            System.out.println("Unique values in column '" + columnName + "':");
-            for (String value : uniqueValues.keySet()) {
-                System.out.println("  " + value + ": " + uniqueValues.get(value));
-            }
-            System.out.println("Total unique values: " + uniqueValues.size());
-        }
-    }
-
-    // Function to get the minimum value from a column (for numeric columns)
-    public double getMinValue(String columnName) {
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData == null || columnData.isEmpty()) {
-            System.out.println("Column " + columnName + " not found or is empty!");
-            return Double.NaN;
-        }
-
-        double min = Double.MAX_VALUE;
-        boolean hasValidNumber = false;
-
-        for (String value : columnData) {
-            try {
-                double numValue = Double.parseDouble(value);
-                min = Math.min(min, numValue);
-                hasValidNumber = true;
-            } catch (NumberFormatException e) {
-                // Skip non-numeric values
-                continue;
+    
+    // Find the best attribute to split on using NWIG
+    public String findBestAttributeNWIG(ArrayList<String> attributes) {
+        String bestAttribute = null;
+        double bestNWIG = -1.0;
+        
+        for (String attribute : attributes) {
+            if (attribute.equals(targetColumn)) continue; // Skip target column
+            
+            HashMap<String, ArrayList<ArrayList<String>>> groupedRows = dataset.groupRowsByAttribute(attribute);
+            if (groupedRows != null) {
+                double nwig = calcNWIG(attribute, groupedRows);
+                if (nwig > bestNWIG) {
+                    bestNWIG = nwig;
+                    bestAttribute = attribute;
+                }
             }
         }
-
-        if (!hasValidNumber) {
-            System.out.println("Column " + columnName + " contains no valid numeric values!");
-            return Double.NaN;
-        }
-
-        return min;
+        
+        return bestAttribute;
     }
-
-    // Function to get the maximum value from a column (for numeric columns)
-    public double getMaxValue(String columnName) {
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData == null || columnData.isEmpty()) {
-            System.out.println("Column " + columnName + " not found or is empty!");
-            return Double.NaN;
-        }
-
-        double max = Double.MIN_VALUE;
-        boolean hasValidNumber = false;
-
-        for (String value : columnData) {
-            try {
-                double numValue = Double.parseDouble(value);
-                max = Math.max(max, numValue);
-                hasValidNumber = true;
-            } catch (NumberFormatException e) {
-                // Skip non-numeric values
-                continue;
-            }
-        }
-
-        if (!hasValidNumber) {
-            System.out.println("Column " + columnName + " contains no valid numeric values!");
-            return Double.NaN;
-        }
-
-        return max;
+    
+    // TODO: Add methods for building the actual decision tree
+    // This is a placeholder for future implementation
+    public void buildTree() {
+        System.out.println("Building decision tree with target column: " + targetColumn);
+        // Implementation will be added later
     }
-
-    // Function to get both min and max values from a column
-    public double[] getMinMaxValues(String columnName) {
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData == null || columnData.isEmpty()) {
-            System.out.println("Column " + columnName + " not found or is empty!");
-            return null;
-        }
-
-        double min = Double.MAX_VALUE;
-        double max = Double.MIN_VALUE;
-        boolean hasValidNumber = false;
-
-        for (String value : columnData) {
-            try {
-                double numValue = Double.parseDouble(value);
-                min = Math.min(min, numValue);
-                max = Math.max(max, numValue);
-                hasValidNumber = true;
-            } catch (NumberFormatException e) {
-                // Skip non-numeric values
-                continue;
-            }
-        }
-
-        if (!hasValidNumber) {
-            System.out.println("Column " + columnName + " contains no valid numeric values!");
-            return null;
-        }
-
-        return new double[] { min, max };
-    }
-
-    // Function to get the minimum value from a column (for string columns -
-    // lexicographically)
-    public String getMinStringValue(String columnName) {
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData == null || columnData.isEmpty()) {
-            System.out.println("Column " + columnName + " not found or is empty!");
-            return null;
-        }
-
-        String min = columnData.get(0);
-        for (String value : columnData) {
-            if (value.compareTo(min) < 0) {
-                min = value;
-            }
-        }
-
-        return min;
-    }
-
-    // Function to get the maximum value from a column (for string columns -
-    // lexicographically)
-    public String getMaxStringValue(String columnName) {
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData == null || columnData.isEmpty()) {
-            System.out.println("Column " + columnName + " not found or is empty!");
-            return null;
-        }
-
-        String max = columnData.get(0);
-        for (String value : columnData) {
-            if (value.compareTo(max) > 0) {
-                max = value;
-            }
-        }
-
-        return max;
-    }
-
-    // Function to print summary statistics for a numeric column
-    public void printColumnStats(String columnName) {
-        System.out.println("Statistics for column '" + columnName + "':");
-
-        // Try numeric statistics first
-        double min = getMinValue(columnName);
-        double max = getMaxValue(columnName);
-
-        if (!Double.isNaN(min) && !Double.isNaN(max)) {
-            System.out.println("  Numeric Range: " + min + " to " + max);
-            System.out.println("  Range Size: " + (max - min));
-        } else {
-            // If not numeric, show string range
-            String minStr = getMinStringValue(columnName);
-            String maxStr = getMaxStringValue(columnName);
-            if (minStr != null && maxStr != null) {
-                System.out.println("  String Range: '" + minStr + "' to '" + maxStr + "' (lexicographically)");
-            }
-        }
-
-        int uniqueCount = getUniqueValueCount(columnName);
-        System.out.println("  Unique Values: " + uniqueCount);
-
-        ArrayList<String> columnData = getColumnFromRows(columnName);
-        if (columnData != null) {
-            System.out.println("  Total Records: " + columnData.size());
-        }
+    
+    // TODO: Add methods for prediction
+    // This is a placeholder for future implementation
+    public String predict(ArrayList<String> instance) {
+        System.out.println("Prediction functionality will be implemented later");
+        return null;
     }
 }
