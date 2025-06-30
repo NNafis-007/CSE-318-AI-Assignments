@@ -205,6 +205,8 @@ public class DecisionTree {
         return prevEnt - entAfterSplit;
     }
 
+    
+
     // Get data from rows structure
     public ArrayList<ArrayList<String>> getDataFromRows() {
         if (rows == null || rows.isEmpty()) {
@@ -291,4 +293,53 @@ public class DecisionTree {
         }
         return splitAttrCol;
     }
+
+    public HashMap<String, ArrayList<ArrayList<String>>> groupRowsByAttribute(String attributeColName, double min, double max, int intervals) {
+        HashMap<String, ArrayList<ArrayList<String>>> splitAttrCol = new HashMap<>();
+
+        // Check if the attribute column exists
+        ArrayList<String> attributeCol = getColumnFromRows(attributeColName);
+        if (attributeCol == null) {
+            System.out.println("Column " + attributeColName + " not found!");
+            return null;
+        }
+
+        ArrayList<Double> ranges = new ArrayList<>();
+
+        
+        double stepSize = (max - min) / intervals;
+
+        for(double i = min; i <= max; i += stepSize) {
+            ranges.add(i);
+        }
+
+        for(var range : ranges) {
+            splitAttrCol.putIfAbsent(String.valueOf(range), new ArrayList<ArrayList<String>>());
+        }
+
+        // iterate over all rows and group rows by attribute value
+        ArrayList<ArrayList<String>> allRows = getDataFromRows();
+        ArrayList<String> headers = getHeaders();
+        
+        for(ArrayList<String> row : allRows) {
+            int attrIdx = headers.indexOf(attributeColName);
+            if (attrIdx >= 0 && attrIdx < row.size()) {
+                String attrVal = row.get(attrIdx);
+
+                double initRange = min;
+                for (double range = min + stepSize; range <= max; range += stepSize) {
+                    if (Double.parseDouble(attrVal) >= initRange && Double.parseDouble(attrVal) < range) {
+                        break;
+                    }
+                    initRange = range;
+                }
+
+                ArrayList<ArrayList<String>> curr_rows = splitAttrCol.get(String.valueOf(initRange));
+                curr_rows.add(row);  
+                splitAttrCol.put(String.valueOf(initRange), curr_rows);  
+            }
+        }
+        return splitAttrCol;
+    }
+
 }
