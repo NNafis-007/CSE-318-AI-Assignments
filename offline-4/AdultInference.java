@@ -6,7 +6,20 @@ import java.util.Random;
 public class AdultInference {
     
     public static void main(String[] args) {
+        if(args.length < 2) {
+            System.out.println("Usage : java AdultInference <Criteria> <MaxDepth>");
+            return;
+        }
+        
         try {
+            // Parse command line arguments
+            String criteria = args[0].toUpperCase();
+            int argDepth = Integer.parseInt(args[1]);
+            int maxDepth = argDepth > 0 ? argDepth : Integer.MAX_VALUE; // Use max depth if provided, else no limit
+            
+            System.out.println("Criteria: " + criteria);
+            System.out.println("Max Depth: " + maxDepth);
+            
             // Load the Adult dataset
             Dataset fullDataset = new Dataset();
             fullDataset.readCSV("Datasets/adult.data");
@@ -20,7 +33,7 @@ public class AdultInference {
             
             // Get headers and data
             ArrayList<ArrayList<String>> allData = fullDataset.getData();
-            
+
             // Create a shuffled list of indices for random splitting
             ArrayList<Integer> indices = new ArrayList<>();
             for (int i = 0; i < allData.size(); i++) {
@@ -98,96 +111,79 @@ public class AdultInference {
             System.out.println("=".repeat(50));
             
             // Test different criteria
-            String[] criteriaTypes = {"IG", "IGR", "NWIG"};
+            String[] criteriaTypes = {criteria}; // Use only the provided criteria
+            int[] maxDepths = {maxDepth}; // Use only the provided max depth
             
             for (String criteriaType : criteriaTypes) {
-                System.out.println("\n" + "-".repeat(30));
-                System.out.println("Training with criteria: " + criteriaType);
-                System.out.println("-".repeat(30));
-                
-                // Use smaller max depth for adult dataset due to larger size
-                DecisionTree tree = new DecisionTree(trainDataset, targetColumn, 5, criteriaType);
-                
-                // Measure training time
-                long startTime = System.currentTimeMillis();
-                tree.buildTree();
-                long endTime = System.currentTimeMillis();
-                
-                System.out.println("Training time: " + (endTime - startTime) + " ms");
-                
-                // Print tree statistics
-                tree.printTreeStats();
-                
-                // Test the tree on the test dataset
-                System.out.println("\n" + "=".repeat(30));
-                System.out.println("TESTING DECISION TREE");
-                System.out.println("=".repeat(30));
-                
-                int correctPredictions = 0;
-                int totalPredictions = 0;
-                
-                ArrayList<ArrayList<String>> testDataRows = testDataset.getData();
-                
-                System.out.println("\nTesting on " + testDataRows.size() + " instances...");
-                
-                // For large dataset, we'll just show accuracy without individual predictions
-                long testStartTime = System.currentTimeMillis();
-                
-                for (ArrayList<String> testInstance : testDataRows) {
-                    // Get the actual class (last column is SalaryRange)
-                    String actualClass = testInstance.get(testInstance.size() - 1);
+                for(int depth : maxDepths) {
+                    System.out.println("\n" + "-".repeat(30));
+                    System.out.println("Training with criteria: " + criteriaType + ", Max Depth: " + depth);
+                    System.out.println("-".repeat(30));
                     
-                    // Create instance without the target class for prediction
-                    ArrayList<String> instanceForPrediction = new ArrayList<>();
-                    for (int i = 0; i < testInstance.size() - 1; i++) {
-                        instanceForPrediction.add(testInstance.get(i));
+                    // Use smaller max depth for adult dataset due to larger size
+                    DecisionTree tree = new DecisionTree(trainDataset, targetColumn, depth, criteriaType);
+                    
+                    // Measure training time
+                    long startTime = System.currentTimeMillis();
+                    tree.buildTree();
+                    long endTime = System.currentTimeMillis();
+                    
+                    System.out.println("Training time: " + (endTime - startTime) + " ms");
+                    
+                    // Print tree statistics
+                    tree.printTreeStats();
+                    
+                    // Test the tree on the test dataset
+                    System.out.println("\n" + "=".repeat(10));
+                    System.out.println("TESTING DECISION TREE");
+                    System.out.println("=".repeat(10));
+                    
+                    int correctPredictions = 0;
+                    int totalPredictions = 0;
+                    
+                    ArrayList<ArrayList<String>> testDataRows = testDataset.getData();
+                    
+                    System.out.println("\nTesting on " + testDataRows.size() + " instances...");
+                    
+                    // For large dataset, we'll just show accuracy without individual predictions
+                    long testStartTime = System.currentTimeMillis();
+                    
+                    for (ArrayList<String> testInstance : testDataRows) {
+                        // Get the actual class (last column is SalaryRange)
+                        String actualClass = testInstance.get(testInstance.size() - 1);
+                        
+                        // Create instance without the target class for prediction
+                        ArrayList<String> instanceForPrediction = new ArrayList<>();
+                        for (int i = 0; i < testInstance.size() - 1; i++) {
+                            instanceForPrediction.add(testInstance.get(i));
+                        }
+                        
+                        // Make prediction
+                        String predictedClass = tree.predict(instanceForPrediction);
+                        
+                        boolean isCorrect = actualClass.equals(predictedClass);
+                        if (isCorrect) {
+                            correctPredictions++;
+                        }
+                        totalPredictions++;
                     }
                     
-                    // Make prediction
-                    String predictedClass = tree.predict(instanceForPrediction);
+                    long testEndTime = System.currentTimeMillis();
+                    System.out.println("Testing time: " + (testEndTime - testStartTime) + " ms");
                     
-                    boolean isCorrect = actualClass.equals(predictedClass);
-                    if (isCorrect) {
-                        correctPredictions++;
-                    }
-                    totalPredictions++;
+                    // Calculate and display accuracy
+                    double accuracy = (double) correctPredictions / totalPredictions;
+                    System.out.println("\n" + "=".repeat(40));
+                    System.out.println("ACCURACY RESULTS (" + criteriaType + ")");
+                    System.out.println("=".repeat(40));
+                    System.out.println("Correct predictions: " + correctPredictions + "/" + totalPredictions);
+                    System.out.println("Accuracy: " + String.format("%.2f%%", accuracy * 100));
+                    System.out.println("Error rate: " + String.format("%.2f%%", (1 - accuracy) * 100));
+                    
+
                 }
-                
-                long testEndTime = System.currentTimeMillis();
-                System.out.println("Testing time: " + (testEndTime - testStartTime) + " ms");
-                
-                // Calculate and display accuracy
-                double accuracy = (double) correctPredictions / totalPredictions;
-                System.out.println("\n" + "=".repeat(40));
-                System.out.println("ACCURACY RESULTS (" + criteriaType + ")");
-                System.out.println("=".repeat(40));
-                System.out.println("Correct predictions: " + correctPredictions + "/" + totalPredictions);
-                System.out.println("Accuracy: " + String.format("%.2f%%", accuracy * 100));
-                System.out.println("Error rate: " + String.format("%.2f%%", (1 - accuracy) * 100));
-                                
-                // Show sample predictions for verification
-                System.out.println("\nSample predictions (first 10):");
-                System.out.println("Actual\t\tPredicted\tCorrect");
-                System.out.println("-".repeat(40));
-                
-                for (int i = 0; i < Math.min(10, testDataRows.size()); i++) {
-                    ArrayList<String> testInstance = testDataRows.get(i);
-                    String actualClass = testInstance.get(testInstance.size() - 1);
-                    
-                    ArrayList<String> instanceForPrediction = new ArrayList<>();
-                    for (int j = 0; j < testInstance.size() - 1; j++) {
-                        instanceForPrediction.add(testInstance.get(j));
-                    }
-                    
-                    String predictedClass = tree.predict(instanceForPrediction);
-                    boolean isCorrect = actualClass.equals(predictedClass);
-                    
-                    System.out.println(actualClass + "\t\t" + predictedClass + "\t\t" + (isCorrect ? "YES" : "NO"));
-                }
-                
                 System.out.println("\n" + "=".repeat(50));
-            }
-            
+            }            
         } catch (IOException e) {
             System.err.println("Error reading the dataset: " + e.getMessage());
             e.printStackTrace();

@@ -637,7 +637,6 @@ public class DecisionTree {
         System.out.println("  Maximum depth: " + maxDepth);
         System.out.println("  Target column: " + targetColName);
         System.out.println("  Criteria used: " + criteriaType);
-        System.out.println("  Max depth limit: " + maxDepth);
     }
     
     // Helper method to calculate tree statistics

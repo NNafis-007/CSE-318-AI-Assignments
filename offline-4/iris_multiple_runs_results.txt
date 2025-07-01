@@ -1,0 +1,76 @@
+============================================================
+IRIS DATASET - MULTIPLE RUNS ANALYSIS
+============================================================
+Total records: 150
+Number of runs: 10
+Train/Test split: 80%/20%
+Criteria tested: IG, IGR, NWIG
+Max depths tested: 2, 3, 4
+============================================================
+
+============================================================
+SUMMARY STATISTICS (10 RUNS)
+============================================================
+
+IG (Depth=2):
+  Average Accuracy: 92.00%
+  Min Accuracy: 86.67%
+  Max Accuracy: 96.67%
+  Avg Train Time: 6.3 ms
+  Avg Test Time: 0.2 ms
+
+IG (Depth=3):
+  Average Accuracy: 91.67%
+  Min Accuracy: 83.33%
+  Max Accuracy: 96.67%
+  Avg Train Time: 1.5 ms
+  Avg Test Time: 0.1 ms
+
+IG (Depth=4):
+  Average Accuracy: 92.67%
+  Min Accuracy: 86.67%
+  Max Accuracy: 96.67%
+  Avg Train Time: 1.4 ms
+  Avg Test Time: 0.2 ms
+
+IGR (Depth=2):
+  Average Accuracy: 93.67%
+  Min Accuracy: 86.67%
+  Max Accuracy: 100.00%
+  Avg Train Time: 1.0 ms
+  Avg Test Time: 0.1 ms
+
+IGR (Depth=3):
+  Average Accuracy: 95.00%
+  Min Accuracy: 90.00%
+  Max Accuracy: 100.00%
+  Avg Train Time: 1.8 ms
+  Avg Test Time: 0.1 ms
+
+IGR (Depth=4):
+  Average Accuracy: 94.67%
+  Min Accuracy: 90.00%
+  Max Accuracy: 100.00%
+  Avg Train Time: 1.7 ms
+  Avg Test Time: 0.2 ms
+
+NWIG (Depth=2):
+  Average Accuracy: 92.00%
+  Min Accuracy: 86.67%
+  Max Accuracy: 96.67%
+  Avg Train Time: 1.5 ms
+  Avg Test Time: 0.1 ms
+
+NWIG (Depth=3):
+  Average Accuracy: 91.67%
+  Min Accuracy: 83.33%
+  Max Accuracy: 96.67%
+  Avg Train Time: 1.6 ms
+  Avg Test Time: 0.0 ms
+
+NWIG (Depth=4):
+  Average Accuracy: 92.67%
+  Min Accuracy: 86.67%
+  Max Accuracy: 96.67%
+  Avg Train Time: 1.5 ms
+  Avg Test Time: 0.0 ms
