@@ -24,49 +24,14 @@ public class DecisionTree {
         this.criteriaType = criteriaType;
     }
     
-    // Get the dataset
-    public Dataset getDataset() {
-        return dataset;
-    }
-    
     // Get the target column name
     public String getTargetColName() {
         return targetColName;
     }
     
-    // Set the target column
-    public void setTargetColName(String targetColName) {
-        this.targetColName = targetColName;
-    }
-    
     // Get the root node
     public Node getRoot() {
         return root;
-    }
-    
-    // Set the root node
-    public void setRoot(Node root) {
-        this.root = root;
-    }
-    
-    // Get max depth
-    public int getMaxDepth() {
-        return maxDepth;
-    }
-    
-    // Set max depth
-    public void setMaxDepth(int maxDepth) {
-        this.maxDepth = maxDepth;
-    }
-    
-    // Get criteria type
-    public String getCriteriaType() {
-        return criteriaType;
-    }
-    
-    // Set criteria type
-    public void setCriteriaType(String criteriaType) {
-        this.criteriaType = criteriaType;
     }
     
     // Member function to calculate score based on criteria type
