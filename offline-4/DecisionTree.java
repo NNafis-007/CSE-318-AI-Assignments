@@ -4,7 +4,6 @@ import java.util.HashMap;
 public class DecisionTree {
     private Dataset dataset;
     private String targetColName;
-    private String idColName;
     private Node root;
     private int maxDepth;
     private String criteriaType; // "IG", "IGR", or "NWIG"
@@ -15,7 +14,6 @@ public class DecisionTree {
         this.targetColName = targetColName;
         this.maxDepth = 10; // Default max depth
         this.criteriaType = "IG"; // Default criteria
-        this.idColName = "Id"; // Default ID column name
     }
     
     // Constructor with parameters
@@ -24,9 +22,32 @@ public class DecisionTree {
         this.targetColName = targetColName;
         this.maxDepth = maxDepth;
         this.criteriaType = criteriaType;
-        this.idColName = "Id"; // Default ID column name
     }
     
+    // Get the dataset
+    public Dataset getDataset() {
+        return dataset;
+    }
+    
+    // Get the target column name
+    public String getTargetColName() {
+        return targetColName;
+    }
+    
+    // Set the target column
+    public void setTargetColName(String targetColName) {
+        this.targetColName = targetColName;
+    }
+    
+    // Get the root node
+    public Node getRoot() {
+        return root;
+    }
+    
+    // Set the root node
+    public void setRoot(Node root) {
+        this.root = root;
+    }
     
     // Get max depth
     public int getMaxDepth() {
@@ -48,91 +69,26 @@ public class DecisionTree {
         this.criteriaType = criteriaType;
     }
     
+    // Member function to calculate score based on criteria type
+    private double calculateCriteria(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows, Node node) {
+        ArrayList<String> targetCol = getTargetColumnFromNodeData(node);
+        
+        switch (criteriaType.toUpperCase()) {
+            case "IGR":
+                return calcIGRForNode(attributeColName, groupedRows, targetCol, node);
+            case "NWIG":
+                return calcNWIGForNode(attributeColName, groupedRows, targetCol, node);
+            case "IG":
+            default:
+                return calcIGForNode(attributeColName, groupedRows, targetCol, node);
+        }
+    }
+    
     // Calculate entropy for the target column
     public double calcEntropy() {
         return Criteria.calcEntropy(dataset, targetColName);
     }
     
-    // Calculate Information Gain for an attribute
-    public double calcIG(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-        ArrayList<String> targetCol = dataset.getColumn(targetColName);
-        return Criteria.calcIG(dataset, targetCol, attributeColName, groupedRows);
-    }
-    
-    // Calculate Information Gain Ratio for an attribute
-    public double calcIGR(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-        ArrayList<String> targetCol = dataset.getColumn(targetColName);
-        return Criteria.calcIGR(dataset, targetCol, attributeColName, groupedRows);
-    }
-    
-    // Calculate Normalized Weighted Information Gain for an attribute
-    public double calcNWIG(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows) {
-        ArrayList<String> targetCol = dataset.getColumn(targetColName);
-        return Criteria.calcNWIG(dataset, targetCol, attributeColName, groupedRows);
-    }
-    
-    // Find the best attribute to split on using Information Gain
-    public String findBestAttributeIG(ArrayList<String> attributes) {
-        String bestAttribute = null;
-        double bestIG = -1.0;
-        
-        for (String attribute : attributes) {
-            if (attribute.equals(targetColName)) continue; // Skip target column
-            
-            HashMap<String, ArrayList<ArrayList<String>>> groupedRows = dataset.groupRowsByAttribute(attribute);
-            if (groupedRows != null) {
-                double ig = calcIG(attribute, groupedRows);
-                if (ig > bestIG) {
-                    bestIG = ig;
-                    bestAttribute = attribute;
-                }
-            }
-        }
-        
-        return bestAttribute;
-    }
-    
-    // Find the best attribute to split on using Information Gain Ratio
-    public String findBestAttributeIGR(ArrayList<String> attributes) {
-        String bestAttribute = null;
-        double bestIGR = -1.0;
-        
-        for (String attribute : attributes) {
-            if (attribute.equals(targetColName)) continue; // Skip target column
-            
-            HashMap<String, ArrayList<ArrayList<String>>> groupedRows = dataset.groupRowsByAttribute(attribute);
-            if (groupedRows != null) {
-                double igr = calcIGR(attribute, groupedRows);
-                if (igr > bestIGR) {
-                    bestIGR = igr;
-                    bestAttribute = attribute;
-                }
-            }
-        }
-        
-        return bestAttribute;
-    }
-    
-    // Find the best attribute to split on using NWIG
-    public String findBestAttributeNWIG(ArrayList<String> attributes) {
-        String bestAttribute = null;
-        double bestNWIG = -1.0;
-        
-        for (String attribute : attributes) {
-            if (attribute.equals(targetColName)) continue; // Skip target column
-            
-            HashMap<String, ArrayList<ArrayList<String>>> groupedRows = dataset.groupRowsByAttribute(attribute);
-            if (groupedRows != null) {
-                double nwig = calcNWIG(attribute, groupedRows);
-                if (nwig > bestNWIG) {
-                    bestNWIG = nwig;
-                    bestAttribute = attribute;
-                }
-            }
-        }
-        
-        return bestAttribute;
-    }
     
     // Build the decision tree
     public void buildTree() {
@@ -175,12 +131,12 @@ public class DecisionTree {
             return;
         }
         
-        // 2. Check if node is pure (all instances have same target class)
+        // 2. Check if in a node, all data/instances have same target class)
         if (currentNode.isPure(dataset, targetColName)) {
             String pureClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
             currentNode.setTargetClass(pureClass);
-            System.out.println("Pure leaf node created at depth " + currentDepth + " with class: " + pureClass);
+            // System.out.println("Pure leaf node created at depth " + currentDepth + " with class: " + pureClass);
             return;
         }
         
@@ -198,7 +154,7 @@ public class DecisionTree {
             String mostFrequentClass = "Unknown"; // or get from parent
             currentNode.setLeaf(true);
             currentNode.setTargetClass(mostFrequentClass);
-            System.out.println("Empty leaf node created at depth " + currentDepth);
+            System.out.println("(ERROR) Empty leaf node created at depth " + currentDepth);
             return;
         }
         
@@ -242,11 +198,14 @@ public class DecisionTree {
                 String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
                 currentNode.setLeaf(true);
                 currentNode.setTargetClass(mostFrequentClass);
-                System.out.println("Leaf node created (no variation in continuous attribute) at depth " + currentDepth + " with class: " + mostFrequentClass);
+                System.out.println("Leaf node created (continuous attribute same) at depth " + currentDepth + " with class: " + mostFrequentClass);
                 return;
             }
             
-            int intervals = Math.max(2, Math.min(5, (int) Math.round((maxVal - minVal) * 3))); // Limit intervals
+            //int intervals = Math.max(2, Math.min(5, (int) Math.round((maxVal - minVal) * 3))); // Limit intervals
+
+            int intervals = (int) Math.round((maxVal - minVal) * 3); // Limit intervals
+
             
             currentNode.setMinRange(minVal);
             currentNode.setMaxRange(maxVal);
@@ -287,8 +246,9 @@ public class DecisionTree {
         
         // Create child nodes for each attribute value
         ArrayList<String> remainingAttributes = new ArrayList<>(availableAttributes);
-        remainingAttributes.remove(bestAttribute);
+        remainingAttributes.remove(bestAttribute); 
         
+        // Create child nodes for each unique attribute value (or range for continous data) in grouped data
         for (String attributeValue : groupedData.keySet()) {
             ArrayList<ArrayList<String>> childData = groupedData.get(attributeValue);
             
@@ -311,7 +271,7 @@ public class DecisionTree {
         double bestScore = -1.0;
         
         for (String attribute : attributes) {
-            if (attribute.equals(targetColName)) continue;
+            if (attribute.equals(targetColName) || attribute.equals("Id")) continue;
             
             // Create grouped data for this node
             HashMap<String, ArrayList<ArrayList<String>>> groupedData;
@@ -345,7 +305,7 @@ public class DecisionTree {
                 }
                 
                 if (hasValidSplit) {
-                    double score = calculateScore(attribute, groupedData, node);
+                    double score = calculateCriteria(attribute, groupedData, node);
                     if (score > bestScore) {
                         bestScore = score;
                         bestAttribute = attribute;
@@ -355,22 +315,6 @@ public class DecisionTree {
         }
         
         return bestAttribute;
-    }
-    
-    // Calculate score based on criteria type
-    private double calculateScore(String attributeColName, HashMap<String, ArrayList<ArrayList<String>>> groupedRows, Node node) {
-        // Create a temporary target column from node data
-        ArrayList<String> targetCol = getTargetColumnFromNodeData(node);
-        
-        switch (criteriaType.toUpperCase()) {
-            case "IGR":
-                return calcIGRForNode(attributeColName, groupedRows, targetCol, node);
-            case "NWIG":
-                return calcNWIGForNode(attributeColName, groupedRows, targetCol, node);
-            case "IG":
-            default:
-                return calcIGForNode(attributeColName, groupedRows, targetCol, node);
-        }
     }
     
     // Helper methods to calculate scores for node-specific data
@@ -447,7 +391,7 @@ public class DecisionTree {
         return (ig / logNormalizer) * sizePenalty;
     }
     
-    // Helper methods for node data manipulation
+    // HELPER METHODS
     
     // Get minimum value from node data for a specific attribute
     private double getMinValueFromNodeData(Node node, String attributeName) {
@@ -468,6 +412,7 @@ public class DecisionTree {
                     hasValidNumber = true;
                 } catch (NumberFormatException e) {
                     // Skip non-numeric values
+                    break;
                 }
             }
         }
@@ -494,6 +439,7 @@ public class DecisionTree {
                     hasValidNumber = true;
                 } catch (NumberFormatException e) {
                     // Skip non-numeric values
+                    break;
                 }
             }
         }
@@ -602,7 +548,7 @@ public class DecisionTree {
         }
         
         // If more than 10 unique values or if all values are numeric, consider it continuous
-        if (uniqueValues.size() > 10) {
+        if (uniqueValues.size() > 5) {
             return true;
         }
         
@@ -617,7 +563,7 @@ public class DecisionTree {
             }
         }
         
-        return allNumeric && uniqueValues.size() > 3;
+        return allNumeric;
     }
     
     // Predict the class for a given instance
@@ -734,7 +680,7 @@ public class DecisionTree {
                 String childPrefix = prefix + (isLast ? "    " : "│   ");
                 System.out.print(childPrefix);
                 System.out.print(isLastChild ? "└── " : "├── ");
-                System.out.print("(" + childKey + ") → ");
+                System.out.print("(" + childKey + ") --> ");
                 System.out.println();
                 
                 printTreeRecursive(childNode, childPrefix + (isLastChild ? "    " : "│   "), true);

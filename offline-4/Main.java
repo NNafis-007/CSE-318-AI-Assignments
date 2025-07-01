@@ -3,6 +3,11 @@ import java.util.ArrayList;
 public class Main {
 
     public static void main(String[] args) {
+
+        if(args.length < 2) {
+            System.out.println("Usage : java Main <Criteria> <MaxDepth>");
+            return;
+        }
         try {
             // Create dataset and load data
             Dataset dataset = new Dataset();
@@ -10,7 +15,10 @@ public class Main {
             dataset.readCSV(filePath);
 
             // Create decision tree with dataset and target column
-            DecisionTree decisionTree = new DecisionTree(dataset, "Species", 5, "IG");
+            int maxDepth = Integer.parseInt(args[1]); // Set max depth for the tree
+            String criteria = args[0].toUpperCase();
+
+            DecisionTree decisionTree = new DecisionTree(dataset, "Species", maxDepth, criteria);
 
             System.out.println("=== Dataset Information ===");
             System.out.println("Total rows: " + dataset.getRowCount());
@@ -29,10 +37,7 @@ public class Main {
             
             System.out.println("\n=== Tree Statistics ===");
             decisionTree.printTreeStats();
-            
-            System.out.println("\n=== Tree Structure ===");
-            decisionTree.printTree();
-            
+                        
             System.out.println("\n=== Testing Predictions ===");
             // Test prediction with some sample instances
             ArrayList<ArrayList<String>> testData = dataset.getData();
@@ -53,24 +58,25 @@ public class Main {
             }
             
             System.out.println("\n=== Testing Different Criteria ===");
-            
+            testAccuracy(decisionTree, dataset, criteria);
+
             // Test with IGR
-            System.out.println("\n--- Using Information Gain Ratio (IGR) ---");
-            DecisionTree treeIGR = new DecisionTree(dataset, "Species", 5, "IGR");
-            treeIGR.buildTree();
-            treeIGR.printTreeStats();
+            // System.out.println("\n--- Using Information Gain Ratio (IGR) ---");
+            // DecisionTree treeIGR = new DecisionTree(dataset, "Species", maxDepth, "IGR");
+            // treeIGR.buildTree();
+            // treeIGR.printTreeStats();
             
             // Test with NWIG
-            System.out.println("\n--- Using Normalized Weighted Information Gain (NWIG) ---");
-            DecisionTree treeNWIG = new DecisionTree(dataset, "Species", 5, "NWIG");
-            treeNWIG.buildTree();
-            treeNWIG.printTreeStats();
+            // System.out.println("\n--- Using Normalized Weighted Information Gain (NWIG) ---");
+            // DecisionTree treeNWIG = new DecisionTree(dataset, "Species", maxDepth, "NWIG");
+            // treeNWIG.buildTree();
+            // treeNWIG.printTreeStats();
             
-            // Test accuracy comparison
-            System.out.println("\n=== Accuracy Comparison ===");
-            testAccuracy(decisionTree, dataset, "IG");
-            testAccuracy(treeIGR, dataset, "IGR");
-            testAccuracy(treeNWIG, dataset, "NWIG");
+            // // Test accuracy comparison
+            // System.out.println("\n=== Accuracy Comparison ===");
+            // testAccuracy(decisionTree, dataset, "IG");
+            // testAccuracy(treeIGR, dataset, "IGR");
+            // testAccuracy(treeNWIG, dataset, "NWIG");
             
         } catch (Exception e) {
             e.printStackTrace();

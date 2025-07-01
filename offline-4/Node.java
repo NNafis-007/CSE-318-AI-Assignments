@@ -29,34 +29,6 @@ public class Node {
         this.nodeData = new ArrayList<>();
     }
     
-    public Node(String attributeName, boolean isContinuous, boolean isForAttribute) {
-        this();
-        if (isForAttribute) {
-            this.attributeName = attributeName;
-            this.isContinuous = isContinuous;
-        } else {
-            this.targetClass = attributeName;
-            this.isLeaf = true;
-        }
-    }
-    
-    // Helper constructor for leaf nodes
-    public static Node createLeafNode(String targetClass) {
-        Node node = new Node();
-        node.targetClass = targetClass;
-        node.isLeaf = true;
-        return node;
-    }
-    
-    // Helper constructor for internal nodes
-    public static Node createInternalNode(String attributeName, boolean isContinuous) {
-        Node node = new Node();
-        node.attributeName = attributeName;
-        node.isContinuous = isContinuous;
-        node.isLeaf = false;
-        return node;
-    }
-    
     // Getters and Setters
     public String getAttributeName() {
         return attributeName;
@@ -219,7 +191,8 @@ public class Node {
         ArrayList<String> headers = dataset.getHeaders();
         int targetIndex = headers.indexOf(targetColName);
         if (targetIndex < 0) {
-            return true;
+            System.out.println("ERROR IN isPure: Target column not found: " + targetColName);
+            return false;
         }
         
         String firstClass = null;
@@ -235,14 +208,6 @@ public class Node {
         }
         
         return true;
-    }
-    
-    // Method to create a temporary dataset from node data for calculations
-    public Dataset createNodeDataset(Dataset originalDataset) {
-        Dataset nodeDataset = new Dataset();
-        // This would require modification to Dataset class to accept data directly
-        // For now, we'll work with the nodeData directly
-        return nodeDataset;
     }
     
     @Override
