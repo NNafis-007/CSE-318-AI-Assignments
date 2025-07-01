@@ -92,7 +92,7 @@ public class DecisionTree {
             String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
             currentNode.setTargetClass(mostFrequentClass);
-            System.out.println("Leaf node created at max depth " + currentDepth + " with class: " + mostFrequentClass);
+            // System.out.println("Leaf node created at max depth " + currentDepth + " with class: " + mostFrequentClass);
             return;
         }
         
@@ -110,7 +110,7 @@ public class DecisionTree {
             String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
             currentNode.setTargetClass(mostFrequentClass);
-            System.out.println("Leaf node created (no more attributes) at depth " + currentDepth + " with class: " + mostFrequentClass);
+            // System.out.println("Leaf node created (no more attributes) at depth " + currentDepth + " with class: " + mostFrequentClass);
             return;
         }
         
@@ -128,7 +128,7 @@ public class DecisionTree {
             String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
             currentNode.setTargetClass(mostFrequentClass);
-            System.out.println("Leaf node created (insufficient data: " + currentNode.getNodeData().size() + ") at depth " + currentDepth + " with class: " + mostFrequentClass);
+            // System.out.println("Leaf node created (insufficient data: " + currentNode.getNodeData().size() + ") at depth " + currentDepth + " with class: " + mostFrequentClass);
             return;
         }
         
@@ -139,7 +139,7 @@ public class DecisionTree {
             String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
             currentNode.setTargetClass(mostFrequentClass);
-            System.out.println("Leaf node created (no best attribute) at depth " + currentDepth + " with class: " + mostFrequentClass);
+            // System.out.println("Leaf node created (no best attribute) at depth " + currentDepth + " with class: " + mostFrequentClass);
             return;
         }
         
@@ -163,7 +163,7 @@ public class DecisionTree {
                 String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
                 currentNode.setLeaf(true);
                 currentNode.setTargetClass(mostFrequentClass);
-                System.out.println("Leaf node created (continuous attribute same) at depth " + currentDepth + " with class: " + mostFrequentClass);
+                // System.out.println("Leaf node created (continuous attribute same) at depth " + currentDepth + " with class: " + mostFrequentClass);
                 return;
             }
             
@@ -177,18 +177,18 @@ public class DecisionTree {
             currentNode.setIntervals(intervals);
             
             groupedData = groupNodeDataByAttributeWithRanges(currentNode, bestAttribute, minVal, maxVal, intervals);
-            System.out.println("Splitting on continuous attribute '" + bestAttribute + "' with " + intervals + " intervals at depth " + currentDepth);
+            // System.out.println("Splitting on continuous attribute '" + bestAttribute + "' with " + intervals + " intervals at depth " + currentDepth);
         } else {
             // Handle categorical attributes
             groupedData = groupNodeDataByAttribute(currentNode, bestAttribute);
-            System.out.println("Splitting on categorical attribute '" + bestAttribute + "' at depth " + currentDepth);
+            // System.out.println("Splitting on categorical attribute '" + bestAttribute + "' at depth " + currentDepth);
         }
         
         if (groupedData == null || groupedData.isEmpty()) {
             String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
             currentNode.setTargetClass(mostFrequentClass);
-            System.out.println("Leaf node created (empty grouped data) at depth " + currentDepth + " with class: " + mostFrequentClass);
+            // System.out.println("Leaf node created (empty grouped data) at depth " + currentDepth + " with class: " + mostFrequentClass);
             return;
         }
         
@@ -205,7 +205,7 @@ public class DecisionTree {
             String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
             currentNode.setTargetClass(mostFrequentClass);
-            System.out.println("Leaf node created (no meaningful split) at depth " + currentDepth + " with class: " + mostFrequentClass);
+            // System.out.println("Leaf node created (no meaningful split) at depth " + currentDepth + " with class: " + mostFrequentClass);
             return;
         }
         
@@ -559,7 +559,9 @@ public class DecisionTree {
             return currentNode.getMostFrequentClass(dataset, targetColName);
         }
         
-        String instanceValue = instance.get(attributeIndex);
+        // Get the value of the decisive attribute for this instance
+        String instanceValue = instance.get(attributeIndex); 
+
         
         // Handle continuous vs categorical attributes
         String childKey = null;
@@ -604,54 +606,6 @@ public class DecisionTree {
         return predictRecursive(childNode, instance);
     }
     
-    // Method to print the tree structure
-    public void printTree() {
-        if (root == null) {
-            System.out.println("Tree is empty. Please build the tree first.");
-            return;
-        }
-        
-        System.out.println("Decision Tree Structure:");
-        printTreeRecursive(root, "", true);
-    }
-    
-    // Recursive method to print tree structure
-    private void printTreeRecursive(Node node, String prefix, boolean isLast) {
-        if (node == null) return;
-        
-        // Print current node
-        System.out.print(prefix);
-        System.out.print(isLast ? "└── " : "├── ");
-        
-        if (node.isLeaf()) {
-            System.out.println("Leaf: " + node.getTargetClass() + " (depth: " + node.getDepth() + ", data size: " + node.getNodeData().size() + ")");
-        } else {
-            String nodeInfo = node.getAttributeName();
-            if (node.isContinuous()) {
-                nodeInfo += " [continuous: " + node.getMinRange() + " to " + node.getMaxRange() + ", " + node.getIntervals() + " intervals]";
-            }
-            nodeInfo += " (depth: " + node.getDepth() + ", data size: " + node.getNodeData().size() + ")";
-            System.out.println(nodeInfo);
-        }
-        
-        // Print children
-        if (!node.isLeaf() && node.hasChildren()) {
-            ArrayList<String> childKeys = new ArrayList<>(node.getChildren().keySet());
-            for (int i = 0; i < childKeys.size(); i++) {
-                String childKey = childKeys.get(i);
-                Node childNode = node.getChild(childKey);
-                boolean isLastChild = (i == childKeys.size() - 1);
-                
-                String childPrefix = prefix + (isLast ? "    " : "│   ");
-                System.out.print(childPrefix);
-                System.out.print(isLastChild ? "└── " : "├── ");
-                System.out.print("(" + childKey + ") --> ");
-                System.out.println();
-                
-                printTreeRecursive(childNode, childPrefix + (isLastChild ? "    " : "│   "), true);
-            }
-        }
-    }
     
     // Method to get tree statistics
     public void printTreeStats() {
@@ -696,4 +650,53 @@ public class DecisionTree {
         
         return new int[]{totalNodes, leafNodes, maxDepth};
     }
+
+    // Method to print the tree structure 
+    //public void printTree() {
+    //     if (root == null) {
+    //         System.out.println("Tree is empty. Please build the tree first.");
+    //         return;
+    //     }
+        
+    //     System.out.println("Decision Tree Structure:");
+    //     printTreeRecursive(root, "", true);
+    // }
+    
+    // // Recursive method to print tree structure
+    // private void printTreeRecursive(Node node, String prefix, boolean isLast) {
+    //     if (node == null) return;
+        
+    //     // Print current node
+    //     System.out.print(prefix);
+    //     System.out.print(isLast ? "└── " : "├── ");
+        
+    //     if (node.isLeaf()) {
+    //         System.out.println("Leaf: " + node.getTargetClass() + " (depth: " + node.getDepth() + ", data size: " + node.getNodeData().size() + ")");
+    //     } else {
+    //         String nodeInfo = node.getAttributeName();
+    //         if (node.isContinuous()) {
+    //             nodeInfo += " [continuous: " + node.getMinRange() + " to " + node.getMaxRange() + ", " + node.getIntervals() + " intervals]";
+    //         }
+    //         nodeInfo += " (depth: " + node.getDepth() + ", data size: " + node.getNodeData().size() + ")";
+    //         System.out.println(nodeInfo);
+    //     }
+        
+    //     // Print children
+    //     if (!node.isLeaf() && node.hasChildren()) {
+    //         ArrayList<String> childKeys = new ArrayList<>(node.getChildren().keySet());
+    //         for (int i = 0; i < childKeys.size(); i++) {
+    //             String childKey = childKeys.get(i);
+    //             Node childNode = node.getChild(childKey);
+    //             boolean isLastChild = (i == childKeys.size() - 1);
+                
+    //             String childPrefix = prefix + (isLast ? "    " : "│   ");
+    //             System.out.print(childPrefix);
+    //             System.out.print(isLastChild ? "└── " : "├── ");
+    //             System.out.print("(" + childKey + ") --> ");
+    //             System.out.println();
+                
+    //             printTreeRecursive(childNode, childPrefix + (isLastChild ? "    " : "│   "), true);
+    //         }
+    //     }
+    // }
 }

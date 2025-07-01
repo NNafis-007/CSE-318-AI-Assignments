@@ -7,6 +7,28 @@ import java.util.HashMap;
 public class Dataset {
     private HashMap<Integer, ArrayList<String>> rows;
 
+    // Default constructor
+    public Dataset() {
+        this.rows = new HashMap<>();
+    }
+
+    // Constructor to create dataset from headers and data
+    public Dataset(ArrayList<String> headers, ArrayList<ArrayList<String>> data) {
+        this.rows = new HashMap<>();
+
+        // Store headers at ID = 0
+        if (headers != null) {
+            this.rows.put(0, new ArrayList<>(headers));
+        }
+
+        // Store data rows starting from ID = 1
+        if (data != null) {
+            for (int i = 0; i < data.size(); i++) {
+                this.rows.put(i + 1, new ArrayList<>(data.get(i)));
+            }
+        }
+    }
+
     public void readCSV(String filePath) throws IOException {
         rows = new HashMap<>();
         ArrayList<String[]> tempData = new ArrayList<>();
