@@ -7,6 +7,7 @@ public class DecisionTree {
     private Node root;
     private int maxDepth;
     private String criteriaType; // "IG", "IGR", or "NWIG"
+    private int iters = 0;
     
     // Constructor
     public DecisionTree(Dataset dataset, String targetColName) {
@@ -88,6 +89,10 @@ public class DecisionTree {
         // Check stopping conditions
         
         // 1. Check if max depth reached
+        iters++;
+        if(iters % 500 == 0) {
+            System.out.println("Iterations: " + iters + ", Current Depth: " + currentDepth);
+        }
         if (currentDepth >= maxDepth) {
             String mostFrequentClass = currentNode.getMostFrequentClass(dataset, targetColName);
             currentNode.setLeaf(true);
@@ -511,24 +516,30 @@ public class DecisionTree {
                 uniqueValues.add(row.get(attributeIndex));
             }
         }
-        
-        // If more than 10 unique values or if all values are numeric, consider it continuous
-        if (uniqueValues.size() > 5) {
-            return true;
+                
+        boolean isInt = true;
+        for (String value : uniqueValues) {
+            try {
+                Integer.parseInt(value);
+            } catch (NumberFormatException e) {
+                isInt = false;
+                break;
+            }
         }
-        
+
+
         // Check if all values are numeric
-        boolean allNumeric = true;
+        boolean isDouble = true;
         for (String value : uniqueValues) {
             try {
                 Double.parseDouble(value);
             } catch (NumberFormatException e) {
-                allNumeric = false;
+                isDouble = false;
                 break;
             }
         }
         
-        return allNumeric;
+        return (isInt || isDouble);
     }
     
     // Predict the class for a given instance
