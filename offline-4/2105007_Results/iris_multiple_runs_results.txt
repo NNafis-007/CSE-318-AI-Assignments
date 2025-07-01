@@ -18,6 +18,8 @@ IG (Depth=2):
   Max Accuracy: 96.67%
   Avg Train Time: 6.3 ms
   Avg Test Time: 0.2 ms
+  Avg Total Nodes: 20
+
 
 IG (Depth=3):
   Average Accuracy: 91.67%
@@ -25,6 +27,8 @@ IG (Depth=3):
   Max Accuracy: 96.67%
   Avg Train Time: 1.5 ms
   Avg Test Time: 0.1 ms
+  Avg Total Nodes: 31
+
 
 IG (Depth=4):
   Average Accuracy: 92.67%
@@ -32,6 +36,8 @@ IG (Depth=4):
   Max Accuracy: 96.67%
   Avg Train Time: 1.4 ms
   Avg Test Time: 0.2 ms
+  Avg Total Nodes: 35
+
 
 IGR (Depth=2):
   Average Accuracy: 93.67%
@@ -39,6 +45,8 @@ IGR (Depth=2):
   Max Accuracy: 100.00%
   Avg Train Time: 1.0 ms
   Avg Test Time: 0.1 ms
+  Avg Total Nodes: 22
+
 
 IGR (Depth=3):
   Average Accuracy: 95.00%
@@ -46,6 +54,8 @@ IGR (Depth=3):
   Max Accuracy: 100.00%
   Avg Train Time: 1.8 ms
   Avg Test Time: 0.1 ms
+  Avg Total Nodes: 25
+
 
 IGR (Depth=4):
   Average Accuracy: 94.67%
@@ -53,6 +63,8 @@ IGR (Depth=4):
   Max Accuracy: 100.00%
   Avg Train Time: 1.7 ms
   Avg Test Time: 0.2 ms
+  Avg Total Nodes: 27
+
 
 NWIG (Depth=2):
   Average Accuracy: 92.00%
@@ -60,6 +72,8 @@ NWIG (Depth=2):
   Max Accuracy: 96.67%
   Avg Train Time: 1.5 ms
   Avg Test Time: 0.1 ms
+  Avg Total Nodes: 20
+
 
 NWIG (Depth=3):
   Average Accuracy: 91.67%
@@ -67,6 +81,7 @@ NWIG (Depth=3):
   Max Accuracy: 96.67%
   Avg Train Time: 1.6 ms
   Avg Test Time: 0.0 ms
+  Avg Total Nodes: 30
 
 NWIG (Depth=4):
   Average Accuracy: 92.67%
@@ -74,3 +89,4 @@ NWIG (Depth=4):
   Max Accuracy: 96.67%
   Avg Train Time: 1.5 ms
   Avg Test Time: 0.0 ms
+  Avg Total Nodes: 34
